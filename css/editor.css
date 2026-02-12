@@ -1269,7 +1269,7 @@ body {
 
 .puzzle-hotspot-svg polygon.play {
     pointer-events: all;
-    cursor: pointer;
+    cursor: grab;
     fill: transparent;
     stroke: none;
 }

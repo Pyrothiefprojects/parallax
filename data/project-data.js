@@ -771,7 +771,7 @@ window.SCENEFORGE_PROJECT = {
               ],
               "action": {
                 "type": "puzzle",
-                "puzzleId": "puzzle_1770910998057"
+                "puzzleId": "puzzle_1770911777010"
               },
               "requires": [],
               "stateChange": {
