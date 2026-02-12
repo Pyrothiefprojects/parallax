@@ -497,8 +497,8 @@ window.SCENEFORGE_PROJECT = {
                 ]
               ],
               "action": {
-                "type": "clue",
-                "text": "This statis pod looks functional."
+                "type": "accepts_item",
+                "requiredItemId": "cryo_card_1770923167059"
               },
               "requires": [],
               "stateChange": {
@@ -741,7 +741,12 @@ window.SCENEFORGE_PROJECT = {
                 "puzzleId": "puzzle_1770911777010"
               },
               "requires": [],
-              "stateChange": null
+              "stateChange": {
+                "stateIndex": 2,
+                "frames": [],
+                "frameDuration": 100,
+                "video": null
+              }
             },
             {
               "id": "hotspot_1770911947607",
@@ -778,7 +783,7 @@ window.SCENEFORGE_PROJECT = {
           ]
         }
       ],
-      "editingStateIndex": 0,
+      "editingStateIndex": 3,
       "music": "assets/audio/Scene0.enc"
     }
   ],
@@ -812,8 +817,7 @@ window.SCENEFORGE_PROJECT = {
   "gameState": [
     "used_cryo_card_on_transition",
     "examined_monitor",
-    "solved_trigger_puzzle",
-    "examined_transition"
+    "solved_trigger_puzzle"
   ],
   "progressionSteps": []
 };

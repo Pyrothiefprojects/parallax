@@ -691,6 +691,7 @@ const PlayMode = (() => {
         const autoFlag = GameState.getAutoFlag(hotspot);
 
         // Execute action
+        let actionSucceeded = true;
         const action = hotspot.action;
         switch (action.type) {
             case 'none':
@@ -729,6 +730,8 @@ const PlayMode = (() => {
                     if (autoFlag) GameState.setFlag(autoFlag);
                     const item = InventoryEditor.getItem(action.itemId);
                     showDialogue(`Picked up: ${item ? item.name : action.itemId}`);
+                } else {
+                    actionSucceeded = false;
                 }
                 break;
 
@@ -740,7 +743,8 @@ const PlayMode = (() => {
                     Canvas.getCanvasElement().style.cursor = getActionCursor(hotspot);
                     showDialogue('Used the item.');
                 } else {
-                    showDialogue("That doesn't work here.");
+                    actionSucceeded = false;
+                    showDialogue("That didn't work");
                 }
                 break;
 
@@ -756,10 +760,10 @@ const PlayMode = (() => {
                 break;
         }
 
-        // Scene state change (separate from action)
-        if (hotspot.stateChange && hotspot.stateChange.stateIndex != null) {
+        // Scene state change — only fires if the action succeeded
+        if (actionSucceeded && hotspot.stateChange && hotspot.stateChange.stateIndex != null) {
             const scene = SceneManager.getCurrentScene();
-            if (scene) {
+            if (scene && GameState.getSceneState(scene.id) !== hotspot.stateChange.stateIndex) {
                 const sc = hotspot.stateChange;
                 LoopAnimator.stop();
                 const onDone = () => {
