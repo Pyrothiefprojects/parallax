@@ -6,15 +6,15 @@ const IdeogramEditor = (() => {
     let ruinLibrary = [];
     let placedRuins = [];
     let selectedRuin = null;
-    let activeTool = 'select'; // 'select' | 'addRuin' | 'color' | 'cut' | 'text' | 'createIdeogram' | 'cypher' | 'press' | 'lathe'
-    let cyphers = [];              // [{ id, image, x, y, width, height, rotation, ruinCount, name }]
-    let selectedCypher = null;
-    let draggingCypher = null;
-    let cypherImageCache = {};     // id → loaded Image object
-    let slotImageCache = {};       // 'cypherId_slotIndex' → loaded Image object
-    let cypherConfigEl = null;     // DOM element for cypher config popover
-    let rotatingCypherDrag = null;  // { cypher, lastAngle, accumulated }
-    let cypherSnapAnim = null;      // { cypher, fromRot, toRot, delta, fromAccum, start, duration }
+    let activeTool = 'select'; // 'select' | 'addRuin' | 'color' | 'cut' | 'text' | 'createIdeogram' | 'codex' | 'isopress' | 'isolathe'
+    let codices = [];              // [{ id, image, x, y, width, height, rotation, ruinCount, name }]
+    let selectedCodex = null;
+    let draggingCodex = null;
+    let codexImageCache = {};     // id → loaded Image object
+    let slotImageCache = {};       // 'codexId_slotIndex' → loaded Image object
+    let codexConfigEl = null;     // DOM element for codex config popover
+    let rotatingCodexDrag = null;  // { codex, lastAngle, accumulated }
+    let codexSnapAnim = null;      // { codex, fromRot, toRot, delta, fromAccum, start, duration }
     let viewport = { offsetX: 0, offsetY: 0, zoom: 1.0 };
     let draggingRuin = null;
     let rotationDialEl = null;
@@ -39,9 +39,9 @@ const IdeogramEditor = (() => {
     let selectedText = null;  // currently selected text element
     let draggingText = null;  // { te, startMouseX, startMouseY, startX, startY }
     let selectMouseDown = null; // { elem, type: 'ruin'|'text', startMouseX, startMouseY }
-    let isomarkPlateImage = null;  // Image element for the selected plate background
-    let isomarkPlatePath = '';     // image path string
-    let isomarkRuinId = null;      // ruin ID overlaid on the plate
+    let isoplateImage = null;  // Image element for the IsoPlate background
+    let isoplatePath = '';     // IsoPlate image path
+    let ruinMarkId = null;      // ruinMark ID for IsoMark composite
     let drawnShapes = [];        // [{ id, type: 'line'|'circle', ... }]
     let selectedShape = null;
     let draggingShape = null;    // { shape, startMouseX/Y, startX/Y, ... }
@@ -55,16 +55,16 @@ const IdeogramEditor = (() => {
     let scrollbarHEl = null;  // horizontal scrollbar track
     let scrollbarVEl = null;  // vertical scrollbar track
     let scrollDragging = null; // { axis: 'h'|'v', startMouse, startOffset }
-    let presses = [];              // [{ id, image, x, y, width, height, name, linkedCypherId }]
-    let lathes = [];               // [{ id, image, x, y, width, height, name }]
-    let selectedPress = null;
-    let selectedLathe = null;
-    let draggingPress = null;
-    let draggingLathe = null;
-    let pressImageCache = {};      // id → loaded Image object
-    let latheImageCache = {};      // id → loaded Image object
-    let pressConfigEl = null;      // DOM element for press config popover
-    let latheConfigEl = null;      // DOM element for lathe config popover
+    let isopresses = [];              // [{ id, image, x, y, width, height, name, linkedCodexId }]
+    let isolathes = [];               // [{ id, image, x, y, width, height, name }]
+    let selectedIsopress = null;
+    let selectedIsolathe = null;
+    let draggingIsopress = null;
+    let draggingIsolathe = null;
+    let isopressImageCache = {};      // id → loaded Image object
+    let isolatheImageCache = {};      // id → loaded Image object
+    let isopressConfigEl = null;      // DOM element for isopress config popover
+    let isolatheConfigEl = null;      // DOM element for isolathe config popover
     let canvasLocked = false;  // dev mode: lock canvas panning
 
     // ========== CONSTANTS ==========
@@ -171,22 +171,22 @@ const IdeogramEditor = (() => {
         closeTextInput();
         closeCutMenu();
         closeRuinRadialWheel();
-        closeCypherConfig();
-        closePressConfig();
-        closeLatheConfig();
+        closeCodexConfig();
+        closeIsopressConfig();
+        closeIsolatheConfig();
         selectedRuin = null;
         selectedText = null;
         selectedShape = null;
-        selectedCypher = null;
-        selectedPress = null;
-        selectedLathe = null;
+        selectedCodex = null;
+        selectedIsopress = null;
+        selectedIsolathe = null;
         draggingRuin = null;
         draggingText = null;
         draggingShape = null;
-        draggingCypher = null;
-        draggingPress = null;
-        draggingLathe = null;
-        rotatingCypherDrag = null;
+        draggingCodex = null;
+        draggingIsopress = null;
+        draggingIsolathe = null;
+        rotatingCodexDrag = null;
         shapeDrawing = null;
         resizing = null;
         selectMouseDown = null;
@@ -503,9 +503,9 @@ const IdeogramEditor = (() => {
         ctx.scale(viewport.zoom, viewport.zoom);
 
         renderGrid();
-        cyphers.forEach(c => renderCypher(c));
-        presses.forEach(p => renderPress(p));
-        lathes.forEach(l => renderLathe(l));
+        codices.forEach(c => renderCodex(c));
+        isopresses.forEach(p => renderIsopress(p));
+        isolathes.forEach(l => renderIsolathe(l));
         placedRuins.forEach(ruin => renderPlacedRuin(ruin));
         textElements.forEach(te => renderTextElement(te));
         drawnShapes.forEach(shape => renderDrawnShape(shape));
@@ -682,9 +682,9 @@ const IdeogramEditor = (() => {
 
     // ========== RESIZE HANDLES ==========
     function getSelectedElement() {
-        if (selectedCypher) return selectedCypher;
-        if (selectedPress) return selectedPress;
-        if (selectedLathe) return selectedLathe;
+        if (selectedCodex) return selectedCodex;
+        if (selectedIsopress) return selectedIsopress;
+        if (selectedIsolathe) return selectedIsolathe;
         if (selectedRuin) return selectedRuin;
         if (selectedText) return selectedText;
         if (selectedShape) return selectedShape;
@@ -792,22 +792,22 @@ const IdeogramEditor = (() => {
     }
 
     // ========== CYPHER FUNCTIONS ==========
-    function loadCypherImage(cypher) {
-        if (!cypher || cypherImageCache[cypher.id]) return;
-        loadImageClean(cypher.image, (img) => {
-            cypherImageCache[cypher.id] = img;
+    function loadCodexImage(codex) {
+        if (!codex || codexImageCache[codex.id]) return;
+        loadImageClean(codex.image, (img) => {
+            codexImageCache[codex.id] = img;
             render();
         });
     }
 
-    function preloadAllCypherImages() {
-        cyphers.forEach(c => loadCypherImage(c));
+    function preloadAllCodexImages() {
+        codices.forEach(c => loadCodexImage(c));
     }
 
-    function loadSlotImage(cypher, slotIndex) {
-        const slot = cypher.slots && cypher.slots[slotIndex];
+    function loadSlotImage(codex, slotIndex) {
+        const slot = codex.slots && codex.slots[slotIndex];
         if (!slot || !slot.image) return;
-        const key = cypher.id + '_' + slotIndex;
+        const key = codex.id + '_' + slotIndex;
         if (slotImageCache[key]) return;
         loadImageClean(slot.image, (img) => {
             slotImageCache[key] = img;
@@ -816,39 +816,39 @@ const IdeogramEditor = (() => {
     }
 
     function preloadAllSlotImages() {
-        cyphers.forEach(c => {
+        codices.forEach(c => {
             if (!c.slots) return;
             c.slots.forEach((s, i) => { if (s.image) loadSlotImage(c, i); });
         });
     }
 
     // ========== PRESS / LATHE IMAGE LOADING ==========
-    function loadPressImage(press) {
-        if (!press || pressImageCache[press.id]) return;
-        loadImageClean(press.image, (img) => {
-            pressImageCache[press.id] = img;
+    function loadIsopressImage(isopress) {
+        if (!isopress || isopressImageCache[isopress.id]) return;
+        loadImageClean(isopress.image, (img) => {
+            isopressImageCache[isopress.id] = img;
             render();
         });
     }
 
-    function preloadAllPressImages() {
-        presses.forEach(p => loadPressImage(p));
+    function preloadAllIsopressImages() {
+        isopresses.forEach(p => loadIsopressImage(p));
     }
 
-    function loadLatheImage(lathe) {
-        if (!lathe || latheImageCache[lathe.id]) return;
-        loadImageClean(lathe.image, (img) => {
-            latheImageCache[lathe.id] = img;
+    function loadIsolatheImage(isolathe) {
+        if (!isolathe || isolatheImageCache[isolathe.id]) return;
+        loadImageClean(isolathe.image, (img) => {
+            isolatheImageCache[isolathe.id] = img;
             render();
         });
     }
 
-    function preloadAllLatheImages() {
-        lathes.forEach(l => loadLatheImage(l));
+    function preloadAllIsolatheImages() {
+        isolathes.forEach(l => loadIsolatheImage(l));
     }
 
-    function renderCypher(c) {
-        const img = cypherImageCache[c.id];
+    function renderCodex(c) {
+        const img = codexImageCache[c.id];
         if (!img) return;
         if (img.complete === false) return;
 
@@ -856,24 +856,24 @@ const IdeogramEditor = (() => {
         const h = c.height || DEFAULT_RUIN_SIZE;
         const cx = c.x + w / 2;
         const cy = c.y + h / 2;
-        const isSelected = c === selectedCypher;
+        const isSelected = c === selectedCodex;
 
         ctx.save();
         ctx.translate(cx, cy);
         // Visual rotation during drag or snap animation
-        const isDragTarget = rotatingCypherDrag && rotatingCypherDrag.cypher === c;
-        const isAnimTarget = cypherSnapAnim && cypherSnapAnim.cypher === c;
+        const isDragTarget = rotatingCodexDrag && rotatingCodexDrag.codex === c;
+        const isAnimTarget = codexSnapAnim && codexSnapAnim.codex === c;
         let visualDragRot = 0;
         if (isDragTarget) {
             if (c.isSpindial) {
-                visualDragRot = rotatingCypherDrag.spindialAngle || 0;
+                visualDragRot = rotatingCodexDrag.spindialAngle || 0;
             } else {
-                visualDragRot = rotatingCypherDrag.totalAngle || 0;
+                visualDragRot = rotatingCodexDrag.totalAngle || 0;
             }
         } else if (isAnimTarget) {
-            const t = Math.min(1, (performance.now() - cypherSnapAnim.start) / cypherSnapAnim.duration);
+            const t = Math.min(1, (performance.now() - codexSnapAnim.start) / codexSnapAnim.duration);
             const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
-            const currentRot = cypherSnapAnim.fromRot + cypherSnapAnim.delta * eased;
+            const currentRot = codexSnapAnim.fromRot + codexSnapAnim.delta * eased;
             visualDragRot = (currentRot - (c.rotation || 0)) * Math.PI / 180;
         }
         ctx.rotate((c.rotation || 0) * Math.PI / 180 + visualDragRot);
@@ -893,7 +893,7 @@ const IdeogramEditor = (() => {
             ctx.setLineDash([]);
         }
 
-        // Ruin slot boxes — only for non-spindial cyphers
+        // Ruin slot boxes — only for non-spindial codices
         if (!c.isSpindial) {
             const ruinCount = c.ruinCount || 5;
             const slotSize = c.slotSize || 200;
@@ -904,20 +904,20 @@ const IdeogramEditor = (() => {
             ctx.strokeStyle = isSelected ? '#00e5ff' : 'rgba(255,165,0,0.7)';
             ctx.lineWidth = 1.5 / viewport.zoom;
             const slots = c.slots || [];
-            const isDragging = rotatingCypherDrag && rotatingCypherDrag.cypher === c;
-            let dragOffset = isDragging ? rotatingCypherDrag.accumulated : 0;
+            const isDragging = rotatingCodexDrag && rotatingCodexDrag.codex === c;
+            let dragOffset = isDragging ? rotatingCodexDrag.accumulated : 0;
             if (!isDragging && isAnimTarget) {
-                const t = Math.min(1, (performance.now() - cypherSnapAnim.start) / cypherSnapAnim.duration);
+                const t = Math.min(1, (performance.now() - codexSnapAnim.start) / codexSnapAnim.duration);
                 const eased = 1 - Math.pow(1 - t, 3);
-                dragOffset = cypherSnapAnim.fromAccum * (1 - eased);
+                dragOffset = codexSnapAnim.fromAccum * (1 - eased);
             }
             // Smooth orientation offset: fractional progress toward next step
             const stepSize = (2 * Math.PI) / ruinCount;
-            let fracAngle = isDragging ? (rotatingCypherDrag.accumulated || 0) : 0;
+            let fracAngle = isDragging ? (rotatingCodexDrag.accumulated || 0) : 0;
             if (!isDragging && isAnimTarget) {
-                const t = Math.min(1, (performance.now() - cypherSnapAnim.start) / cypherSnapAnim.duration);
+                const t = Math.min(1, (performance.now() - codexSnapAnim.start) / codexSnapAnim.duration);
                 const eased = 1 - Math.pow(1 - t, 3);
-                fracAngle = cypherSnapAnim.fromAccum * (1 - eased);
+                fracAngle = codexSnapAnim.fromAccum * (1 - eased);
             }
             const orientDragOffset = ((isDragging || isAnimTarget) && c.discOrientCoupling && !c.isSpindial)
                 ? (fracAngle / stepSize) * (Math.PI / 2) : 0;
@@ -1000,9 +1000,9 @@ const IdeogramEditor = (() => {
         ctx.restore();
     }
 
-    function hitTestCypher(mx, my) {
-        for (let i = cyphers.length - 1; i >= 0; i--) {
-            const c = cyphers[i];
+    function hitTestCodex(mx, my) {
+        for (let i = codices.length - 1; i >= 0; i--) {
+            const c = codices[i];
             const w = c.width || DEFAULT_RUIN_SIZE;
             const h = c.height || DEFAULT_RUIN_SIZE;
             if (c.isSpindial) {
@@ -1015,7 +1015,7 @@ const IdeogramEditor = (() => {
                 const dy = (my - cy) / ry;
                 if (dx * dx + dy * dy <= 1) return c;
             } else {
-                // AABB hit test for regular cyphers
+                // AABB hit test for regular codices
                 if (mx >= c.x && mx <= c.x + w && my >= c.y && my <= c.y + h) {
                     return c;
                 }
@@ -1024,8 +1024,8 @@ const IdeogramEditor = (() => {
         return null;
     }
 
-    function selectCypher(c) {
-        selectedCypher = c;
+    function selectCodex(c) {
+        selectedCodex = c;
         selectedRuin = null;
         selectedText = null;
         selectedShape = null;
@@ -1035,28 +1035,28 @@ const IdeogramEditor = (() => {
         render();
     }
 
-    function deselectCypher() {
-        selectedCypher = null;
-        closeCypherConfig();
+    function deselectCodex() {
+        selectedCodex = null;
+        closeCodexConfig();
         render();
     }
 
     // ========== PRESS / LATHE RENDERING ==========
-    function renderPress(p) {
-        const img = pressImageCache[p.id];
+    function renderIsopress(p) {
+        const img = isopressImageCache[p.id];
         if (!img) return;
         if (img.complete === false) return;
         const w = p.width || DEFAULT_RUIN_SIZE;
         const h = p.height || DEFAULT_RUIN_SIZE;
-        const isSelected = p === selectedPress;
+        const isSelected = p === selectedIsopress;
 
         ctx.save();
         ctx.translate(p.x + w / 2, p.y + h / 2);
         ctx.drawImage(img, -w / 2, -h / 2, w, h);
 
         // Draw the ruin visually at position 1 (top) of the linked disc
-        if (p.linkedCypherId) {
-            const disc = cyphers.find(c => c.id === p.linkedCypherId);
+        if (p.linkedCodexId) {
+            const disc = codices.find(c => c.id === p.linkedCodexId);
             if (disc && disc.slots && disc.slots.length > 0) {
                 const ruinCount = disc.ruinCount || 5;
                 const stepDeg = 360 / ruinCount;
@@ -1068,21 +1068,25 @@ const IdeogramEditor = (() => {
                     if (ruinImg && ruinImg.complete !== false) {
                         const rw = ruinImg.naturalWidth || ruinImg.width;
                         const rh = ruinImg.naturalHeight || ruinImg.height;
-                        const maxW = w * 0.7;
-                        const maxH = h * 0.7;
+                        const ruinScale = p.ruinScale != null ? p.ruinScale : 0.7;
+                        const maxW = w * ruinScale;
+                        const maxH = h * ruinScale;
                         const scale = Math.min(maxW / rw, maxH / rh, 1);
                         const dw = rw * scale;
                         const dh = rh * scale;
+                        const ox = p.ruinOffsetX || 0;
+                        const oy = p.ruinOffsetY || 0;
                         const slotRot = (topSlot.rotation || 0) * Math.PI / 180;
                         const isFlipped = topSlot.flipped || false;
                         if (slotRot || isFlipped) {
                             ctx.save();
+                            ctx.translate(ox, oy);
                             if (isFlipped) ctx.scale(-1, 1);
                             if (slotRot) ctx.rotate(slotRot);
                             ctx.drawImage(ruinImg, -dw / 2, -dh / 2, dw, dh);
                             ctx.restore();
                         } else {
-                            ctx.drawImage(ruinImg, -dw / 2, -dh / 2, dw, dh);
+                            ctx.drawImage(ruinImg, ox - dw / 2, oy - dh / 2, dw, dh);
                         }
                     }
                 }
@@ -1097,13 +1101,13 @@ const IdeogramEditor = (() => {
         ctx.restore();
     }
 
-    function renderLathe(l) {
-        const img = latheImageCache[l.id];
+    function renderIsolathe(l) {
+        const img = isolatheImageCache[l.id];
         if (!img) return;
         if (img.complete === false) return;
         const w = l.width || DEFAULT_RUIN_SIZE;
         const h = l.height || DEFAULT_RUIN_SIZE;
-        const isSelected = l === selectedLathe;
+        const isSelected = l === selectedIsolathe;
 
         ctx.save();
         ctx.translate(l.x + w / 2, l.y + h / 2);
@@ -1117,9 +1121,9 @@ const IdeogramEditor = (() => {
         ctx.restore();
     }
 
-    function hitTestPress(mx, my) {
-        for (let i = presses.length - 1; i >= 0; i--) {
-            const p = presses[i];
+    function hitTestIsopress(mx, my) {
+        for (let i = isopresses.length - 1; i >= 0; i--) {
+            const p = isopresses[i];
             const w = p.width || DEFAULT_RUIN_SIZE;
             const h = p.height || DEFAULT_RUIN_SIZE;
             if (mx >= p.x && mx <= p.x + w && my >= p.y && my <= p.y + h) return p;
@@ -1127,9 +1131,9 @@ const IdeogramEditor = (() => {
         return null;
     }
 
-    function hitTestLathe(mx, my) {
-        for (let i = lathes.length - 1; i >= 0; i--) {
-            const l = lathes[i];
+    function hitTestIsolathe(mx, my) {
+        for (let i = isolathes.length - 1; i >= 0; i--) {
+            const l = isolathes[i];
             const w = l.width || DEFAULT_RUIN_SIZE;
             const h = l.height || DEFAULT_RUIN_SIZE;
             if (mx >= l.x && mx <= l.x + w && my >= l.y && my <= l.y + h) return l;
@@ -1137,113 +1141,111 @@ const IdeogramEditor = (() => {
         return null;
     }
 
-    function selectPress(p) {
-        selectedPress = p;
+    function selectIsopress(p) {
+        selectedIsopress = p;
         selectedRuin = null;
         selectedText = null;
         selectedShape = null;
-        selectedCypher = null;
-        selectedLathe = null;
+        selectedCodex = null;
+        selectedIsolathe = null;
         closeRotationDial();
         closeColorPopover();
         closeTextInput();
-        closeCypherConfig();
-        closeLatheConfig();
+        closeCodexConfig();
+        closeIsolatheConfig();
         render();
     }
 
-    function deselectPress() {
-        selectedPress = null;
-        closePressConfig();
+    function deselectIsopress() {
+        selectedIsopress = null;
+        closeIsopressConfig();
         render();
     }
 
-    function selectLathe(l) {
-        selectedLathe = l;
+    function selectIsolathe(l) {
+        selectedIsolathe = l;
         selectedRuin = null;
         selectedText = null;
         selectedShape = null;
-        selectedCypher = null;
-        selectedPress = null;
+        selectedCodex = null;
+        selectedIsopress = null;
         closeRotationDial();
         closeColorPopover();
         closeTextInput();
-        closeCypherConfig();
-        closePressConfig();
+        closeCodexConfig();
+        closeIsopressConfig();
         render();
     }
 
-    function deselectLathe() {
-        selectedLathe = null;
-        closeLatheConfig();
+    function deselectIsolathe() {
+        selectedIsolathe = null;
+        closeIsolatheConfig();
         render();
     }
 
-    function convertRuinToPress(ruin) {
+    function convertRuinToIsopress(ruin) {
         const ruinDef = ruinLibrary.find(r => r.id === ruin.ruinId);
         const imagePath = ruinDef ? ruinDef.image : '';
-        const press = {
-            id: 'press_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        const isopress = {
+            id: 'isopress_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
             image: imagePath,
             x: ruin.x,
             y: ruin.y,
             width: ruin.width || DEFAULT_RUIN_SIZE,
             height: ruin.height || DEFAULT_RUIN_SIZE,
-            name: ruinDef ? ruinDef.name : 'Press',
-            linkedCypherId: null
+            name: ruinDef ? ruinDef.name : 'Isopress',
+            linkedCodexId: null
         };
         const idx = placedRuins.indexOf(ruin);
         if (idx !== -1) placedRuins.splice(idx, 1);
         if (selectedRuin === ruin) deselectRuin();
-        presses.push(press);
+        isopresses.push(isopress);
         const ruinImg = imageCache[ruin.ruinId];
         if (ruinImg) {
-            pressImageCache[press.id] = ruinImg;
+            isopressImageCache[isopress.id] = ruinImg;
         } else {
-            loadPressImage(press);
+            loadIsopressImage(isopress);
         }
-        selectPress(press);
-        showPressConfig(press);
-        return press;
+        selectIsopress(isopress);
+        return isopress;
     }
 
-    function convertRuinToLathe(ruin) {
+    function convertRuinToIsolathe(ruin) {
         const ruinDef = ruinLibrary.find(r => r.id === ruin.ruinId);
         const imagePath = ruinDef ? ruinDef.image : '';
-        const lathe = {
-            id: 'lathe_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        const isolathe = {
+            id: 'isolathe_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
             image: imagePath,
             x: ruin.x,
             y: ruin.y,
             width: ruin.width || DEFAULT_RUIN_SIZE,
             height: ruin.height || DEFAULT_RUIN_SIZE,
-            name: ruinDef ? ruinDef.name : 'Lathe'
+            name: ruinDef ? ruinDef.name : 'Isolathe'
         };
         const idx = placedRuins.indexOf(ruin);
         if (idx !== -1) placedRuins.splice(idx, 1);
         if (selectedRuin === ruin) deselectRuin();
-        lathes.push(lathe);
+        isolathes.push(isolathe);
         const ruinImg = imageCache[ruin.ruinId];
         if (ruinImg) {
-            latheImageCache[lathe.id] = ruinImg;
+            isolatheImageCache[isolathe.id] = ruinImg;
         } else {
-            loadLatheImage(lathe);
+            loadIsolatheImage(isolathe);
         }
-        selectLathe(lathe);
-        showLatheConfig(lathe);
-        return lathe;
+        selectIsolathe(isolathe);
+        return isolathe;
     }
 
     // ========== PRESS / LATHE CONFIG PANELS ==========
-    function showPressConfig(press) {
-        closePressConfig();
+    function showIsopressConfig(isopress) {
+        closeIsopressConfig();
         if (!canvas) return;
-        const w = press.width || DEFAULT_RUIN_SIZE;
+        const w = isopress.width || DEFAULT_RUIN_SIZE;
         const canvasRect = canvas.getBoundingClientRect();
-        const px = canvasRect.left + (press.x + w) * viewport.zoom + viewport.offsetX + 12;
-        const py = canvasRect.top + press.y * viewport.zoom + viewport.offsetY;
+        const px = canvasRect.left + (isopress.x + w) * viewport.zoom + viewport.offsetX + 12;
+        const py = canvasRect.top + isopress.y * viewport.zoom + viewport.offsetY;
 
-        const discCyphers = cyphers.filter(c => !c.isSpindial);
+        const discCodexList = codices.filter(c => !c.isSpindial);
         const panel = document.createElement('div');
         panel.className = 'ideogram-color-popover';
         panel.style.position = 'fixed';
@@ -1251,57 +1253,122 @@ const IdeogramEditor = (() => {
         panel.style.top = py + 'px';
         panel.style.minWidth = '180px';
         panel.style.zIndex = '9999';
+        const curScale = isopress.ruinScale != null ? isopress.ruinScale : 0.7;
+        const curOX = isopress.ruinOffsetX || 0;
+        const curOY = isopress.ruinOffsetY || 0;
         panel.innerHTML = `
-            <div style="font-size:12px; font-weight:bold; color:var(--accent-gold); margin-bottom:8px;">Press Config</div>
+            <div style="font-size:12px; font-weight:bold; color:var(--accent-gold); margin-bottom:8px;">Isopress Config</div>
             <label style="font-size:11px; color:var(--text-secondary);">Name
-                <input class="panel-input" id="press-cfg-name" value="${press.name || ''}" style="width:100%; box-sizing:border-box;">
+                <input class="panel-input" id="isopress-cfg-name" value="${isopress.name || ''}" style="width:100%; box-sizing:border-box;">
             </label>
             <div style="margin-top:8px;">
-                <label style="font-size:11px; color:var(--text-secondary);">Linked Cypher
-                    <select class="panel-input" id="press-cfg-linked" style="width:100%; box-sizing:border-box; margin-top:2px;">
+                <label style="font-size:11px; color:var(--text-secondary);">Size: <span id="isopress-cfg-size-val">${Math.round(w)}</span></label>
+                <input type="range" id="isopress-cfg-size" min="50" max="2000" step="10" value="${Math.round(w)}" style="width:100%; accent-color:var(--accent-orange);">
+            </div>
+            <div style="margin-top:8px;">
+                <label style="font-size:11px; color:var(--text-secondary);">Linked Codex
+                    <select class="panel-input" id="isopress-cfg-linked" style="width:100%; box-sizing:border-box; margin-top:2px;">
                         <option value="">— None —</option>
-                        ${discCyphers.map(c =>
-                            `<option value="${c.id}" ${press.linkedCypherId === c.id ? 'selected' : ''}>${c.name || c.id}</option>`
+                        ${discCodexList.map(c =>
+                            `<option value="${c.id}" ${isopress.linkedCodexId === c.id ? 'selected' : ''}>${c.name || c.id}</option>`
                         ).join('')}
                     </select>
                 </label>
             </div>
+            <div style="margin-top:8px;">
+                <label style="font-size:11px; color:var(--text-secondary);">Ruin Scale
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <input type="range" id="isopress-cfg-scale" min="0.1" max="2" step="0.05" value="${curScale}" style="flex:1; accent-color:var(--accent-orange);">
+                        <span id="isopress-cfg-scale-val" style="font-size:10px; color:var(--accent-gold); min-width:32px; text-align:right;">${Math.round(curScale * 100)}%</span>
+                    </div>
+                </label>
+            </div>
+            <div style="margin-top:8px;">
+                <label style="font-size:11px; color:var(--text-secondary);">Ruin Offset X
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <input type="range" id="isopress-cfg-ox" min="-200" max="200" step="1" value="${curOX}" style="flex:1; accent-color:var(--accent-orange);">
+                        <span id="isopress-cfg-ox-val" style="font-size:10px; color:var(--accent-gold); min-width:32px; text-align:right;">${curOX}px</span>
+                    </div>
+                </label>
+            </div>
+            <div style="margin-top:8px;">
+                <label style="font-size:11px; color:var(--text-secondary);">Ruin Offset Y
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <input type="range" id="isopress-cfg-oy" min="-200" max="200" step="1" value="${curOY}" style="flex:1; accent-color:var(--accent-orange);">
+                        <span id="isopress-cfg-oy-val" style="font-size:10px; color:var(--accent-gold); min-width:32px; text-align:right;">${curOY}px</span>
+                    </div>
+                </label>
+            </div>
             <div style="margin-top:8px; text-align:right;">
-                <button class="panel-btn" id="press-cfg-delete" style="color:#ff4444;">Delete</button>
+                <button class="panel-btn" id="isopress-cfg-delete" style="color:#ff4444;">Delete</button>
             </div>
         `;
         document.body.appendChild(panel);
-        pressConfigEl = panel;
+        isopressConfigEl = panel;
 
-        const nameInput = panel.querySelector('#press-cfg-name');
-        if (nameInput) nameInput.addEventListener('input', () => { press.name = nameInput.value; });
+        const nameInput = panel.querySelector('#isopress-cfg-name');
+        if (nameInput) nameInput.addEventListener('input', () => { isopress.name = nameInput.value; });
 
-        const linkedSelect = panel.querySelector('#press-cfg-linked');
-        if (linkedSelect) linkedSelect.addEventListener('change', () => {
-            press.linkedCypherId = linkedSelect.value || null;
+        const sizeSlider = panel.querySelector('#isopress-cfg-size');
+        const sizeVal = panel.querySelector('#isopress-cfg-size-val');
+        if (sizeSlider) sizeSlider.addEventListener('input', () => {
+            const v = parseInt(sizeSlider.value);
+            isopress.width = v;
+            isopress.height = v;
+            sizeVal.textContent = v;
             render();
         });
 
-        const deleteBtn = panel.querySelector('#press-cfg-delete');
+        const linkedSelect = panel.querySelector('#isopress-cfg-linked');
+        if (linkedSelect) linkedSelect.addEventListener('change', () => {
+            isopress.linkedCodexId = linkedSelect.value || null;
+            render();
+        });
+
+        const scaleSlider = panel.querySelector('#isopress-cfg-scale');
+        const scaleVal = panel.querySelector('#isopress-cfg-scale-val');
+        if (scaleSlider) scaleSlider.addEventListener('input', () => {
+            isopress.ruinScale = parseFloat(scaleSlider.value);
+            scaleVal.textContent = Math.round(isopress.ruinScale * 100) + '%';
+            render();
+        });
+
+        const oxSlider = panel.querySelector('#isopress-cfg-ox');
+        const oxVal = panel.querySelector('#isopress-cfg-ox-val');
+        if (oxSlider) oxSlider.addEventListener('input', () => {
+            isopress.ruinOffsetX = parseInt(oxSlider.value);
+            oxVal.textContent = isopress.ruinOffsetX + 'px';
+            render();
+        });
+
+        const oySlider = panel.querySelector('#isopress-cfg-oy');
+        const oyVal = panel.querySelector('#isopress-cfg-oy-val');
+        if (oySlider) oySlider.addEventListener('input', () => {
+            isopress.ruinOffsetY = parseInt(oySlider.value);
+            oyVal.textContent = isopress.ruinOffsetY + 'px';
+            render();
+        });
+
+        const deleteBtn = panel.querySelector('#isopress-cfg-delete');
         if (deleteBtn) deleteBtn.addEventListener('click', () => {
-            const idx = presses.indexOf(press);
-            if (idx !== -1) presses.splice(idx, 1);
-            delete pressImageCache[press.id];
-            deselectPress();
+            const idx = isopresses.indexOf(isopress);
+            if (idx !== -1) isopresses.splice(idx, 1);
+            delete isopressImageCache[isopress.id];
+            deselectIsopress();
         });
     }
 
-    function closePressConfig() {
-        if (pressConfigEl) { pressConfigEl.remove(); pressConfigEl = null; }
+    function closeIsopressConfig() {
+        if (isopressConfigEl) { isopressConfigEl.remove(); isopressConfigEl = null; }
     }
 
-    function showLatheConfig(lathe) {
-        closeLatheConfig();
+    function showIsolatheConfig(isolathe) {
+        closeIsolatheConfig();
         if (!canvas) return;
-        const w = lathe.width || DEFAULT_RUIN_SIZE;
+        const w = isolathe.width || DEFAULT_RUIN_SIZE;
         const canvasRect = canvas.getBoundingClientRect();
-        const px = canvasRect.left + (lathe.x + w) * viewport.zoom + viewport.offsetX + 12;
-        const py = canvasRect.top + lathe.y * viewport.zoom + viewport.offsetY;
+        const px = canvasRect.left + (isolathe.x + w) * viewport.zoom + viewport.offsetX + 12;
+        const py = canvasRect.top + isolathe.y * viewport.zoom + viewport.offsetY;
 
         const panel = document.createElement('div');
         panel.className = 'ideogram-color-popover';
@@ -1311,47 +1378,61 @@ const IdeogramEditor = (() => {
         panel.style.minWidth = '180px';
         panel.style.zIndex = '9999';
         panel.innerHTML = `
-            <div style="font-size:12px; font-weight:bold; color:var(--accent-gold); margin-bottom:8px;">Lathe Config</div>
+            <div style="font-size:12px; font-weight:bold; color:var(--accent-gold); margin-bottom:8px;">Isolathe Config</div>
             <label style="font-size:11px; color:var(--text-secondary);">Name
-                <input class="panel-input" id="lathe-cfg-name" value="${lathe.name || ''}" style="width:100%; box-sizing:border-box;">
+                <input class="panel-input" id="isolathe-cfg-name" value="${isolathe.name || ''}" style="width:100%; box-sizing:border-box;">
             </label>
+            <div style="margin-top:8px;">
+                <label style="font-size:11px; color:var(--text-secondary);">Size: <span id="isolathe-cfg-size-val">${Math.round(w)}</span></label>
+                <input type="range" id="isolathe-cfg-size" min="50" max="2000" step="10" value="${Math.round(w)}" style="width:100%; accent-color:var(--accent-orange);">
+            </div>
             <div style="margin-top:8px; text-align:right;">
-                <button class="panel-btn" id="lathe-cfg-delete" style="color:#ff4444;">Delete</button>
+                <button class="panel-btn" id="isolathe-cfg-delete" style="color:#ff4444;">Delete</button>
             </div>
         `;
         document.body.appendChild(panel);
-        latheConfigEl = panel;
+        isolatheConfigEl = panel;
 
-        const nameInput = panel.querySelector('#lathe-cfg-name');
-        if (nameInput) nameInput.addEventListener('input', () => { lathe.name = nameInput.value; });
+        const nameInput = panel.querySelector('#isolathe-cfg-name');
+        if (nameInput) nameInput.addEventListener('input', () => { isolathe.name = nameInput.value; });
 
-        const deleteBtn = panel.querySelector('#lathe-cfg-delete');
+        const sizeSlider = panel.querySelector('#isolathe-cfg-size');
+        const sizeVal = panel.querySelector('#isolathe-cfg-size-val');
+        if (sizeSlider) sizeSlider.addEventListener('input', () => {
+            const v = parseInt(sizeSlider.value);
+            isolathe.width = v;
+            isolathe.height = v;
+            sizeVal.textContent = v;
+            render();
+        });
+
+        const deleteBtn = panel.querySelector('#isolathe-cfg-delete');
         if (deleteBtn) deleteBtn.addEventListener('click', () => {
-            const idx = lathes.indexOf(lathe);
-            if (idx !== -1) lathes.splice(idx, 1);
-            delete latheImageCache[lathe.id];
-            deselectLathe();
+            const idx = isolathes.indexOf(isolathe);
+            if (idx !== -1) isolathes.splice(idx, 1);
+            delete isolatheImageCache[isolathe.id];
+            deselectIsolathe();
         });
     }
 
-    function closeLatheConfig() {
-        if (latheConfigEl) { latheConfigEl.remove(); latheConfigEl = null; }
+    function closeIsolatheConfig() {
+        if (isolatheConfigEl) { isolatheConfigEl.remove(); isolatheConfigEl = null; }
     }
 
-    function hitTestSlotBox(cypher, mx, my) {
-        if (!cypher.slots) return -1;
-        const w = cypher.width || DEFAULT_RUIN_SIZE;
-        const h = cypher.height || DEFAULT_RUIN_SIZE;
-        const cxc = cypher.x + w / 2;
-        const cyc = cypher.y + h / 2;
-        const rot = (cypher.rotation || 0) * Math.PI / 180;
-        const ruinCount = cypher.ruinCount || 5;
-        const slotSize = cypher.slotSize || 200;
+    function hitTestSlotBox(codex, mx, my) {
+        if (!codex.slots) return -1;
+        const w = codex.width || DEFAULT_RUIN_SIZE;
+        const h = codex.height || DEFAULT_RUIN_SIZE;
+        const cxc = codex.x + w / 2;
+        const cyc = codex.y + h / 2;
+        const rot = (codex.rotation || 0) * Math.PI / 180;
+        const ruinCount = codex.ruinCount || 5;
+        const slotSize = codex.slotSize || 200;
         const erx = w / 2;
         const ery = h / 2;
-        const proximity = cypher.ruinProximity || 0;
+        const proximity = codex.ruinProximity || 0;
         const slotOffset = slotSize / 2 + 4 + proximity;
-        // Transform mouse into cypher-local space (undo cypher center + rotation)
+        // Transform mouse into codex-local space (undo codex center + rotation)
         const dx = mx - cxc;
         const dy = my - cyc;
         const cosR = Math.cos(-rot);
@@ -1359,9 +1440,9 @@ const IdeogramEditor = (() => {
         const lx = dx * cosR - dy * sinR;
         const ly = dx * sinR + dy * cosR;
         for (let i = 0; i < ruinCount; i++) {
-            const slot = cypher.slots[i];
+            const slot = codex.slots[i];
             const hasImg = slot && slot.image;
-            const scale = cypher.ruinScale || 1;
+            const scale = codex.ruinScale || 1;
             const boxW = ((hasImg && slot.width) ? slot.width : slotSize) * scale;
             const boxH = ((hasImg && slot.height) ? slot.height : slotSize) * scale;
             const angle = (i * 2 * Math.PI / ruinCount) - Math.PI / 2;
@@ -1374,7 +1455,7 @@ const IdeogramEditor = (() => {
         return -1;
     }
 
-    function assignSlotImage(cypher, slotIndex) {
+    function assignSlotImage(codex, slotIndex) {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
@@ -1382,10 +1463,10 @@ const IdeogramEditor = (() => {
             const file = e.target.files[0];
             if (!file) return;
             const imagePath = 'assets/puzzles/' + file.name;
-            if (!cypher.slots) cypher.slots = [];
-            while (cypher.slots.length <= slotIndex) cypher.slots.push({ image: null, name: '', rotation: 0 });
+            if (!codex.slots) codex.slots = [];
+            while (codex.slots.length <= slotIndex) codex.slots.push({ image: null, name: '', rotation: 0 });
             loadImageClean(imagePath, (img) => {
-                cypher.slots[slotIndex] = {
+                codex.slots[slotIndex] = {
                     image: imagePath,
                     name: file.name.replace(/\.[^.]+$/, ''),
                     width: img.naturalWidth,
@@ -1396,21 +1477,21 @@ const IdeogramEditor = (() => {
                     lockOrientation: false,
                     pinPosition: false
                 };
-                const key = cypher.id + '_' + slotIndex;
+                const key = codex.id + '_' + slotIndex;
                 slotImageCache[key] = img;
                 render();
-                if (cypherConfigEl) showCypherConfig(cypher);
+                if (codexConfigEl) showCodexConfig(codex);
             });
         };
         input.click();
     }
 
-    function convertRuinToCypher(ruin) {
+    function convertRuinToCodex(ruin) {
         const ruinDef = ruinLibrary.find(r => r.id === ruin.ruinId);
         const imagePath = ruinDef ? ruinDef.image : '';
         const ruinCount = 5;
-        const cypher = {
-            id: 'cypher_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        const codex = {
+            id: 'codex_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
             image: imagePath,
             x: ruin.x,
             y: ruin.y,
@@ -1419,7 +1500,7 @@ const IdeogramEditor = (() => {
             rotation: ruin.rotation || 0,
             ruinCount: ruinCount,
             slotSize: 200,
-            name: ruinDef ? ruinDef.name : 'Cypher',
+            name: ruinDef ? ruinDef.name : 'Codex',
             slots: Array.from({ length: ruinCount }, () => ({ image: null, name: '' })),
             solvedSlots: null,
             isSpindial: false,
@@ -1433,79 +1514,79 @@ const IdeogramEditor = (() => {
         const idx = placedRuins.indexOf(ruin);
         if (idx !== -1) placedRuins.splice(idx, 1);
         if (selectedRuin === ruin) deselectRuin();
-        // Add to cyphers
-        cyphers.push(cypher);
-        // Load image into cypher cache
+        // Add to codices
+        codices.push(codex);
+        // Load image into codex cache
         const ruinImg = imageCache[ruin.ruinId];
         if (ruinImg) {
-            cypherImageCache[cypher.id] = ruinImg;
+            codexImageCache[codex.id] = ruinImg;
         } else {
-            loadCypherImage(cypher);
+            loadCodexImage(codex);
         }
-        selectCypher(cypher);
-        return cypher;
+        selectCodex(codex);
+        return codex;
     }
 
-    function showCypherConfig(cypher) {
-        closeCypherConfig();
+    function showCodexConfig(codex) {
+        closeCodexConfig();
         if (!canvas) return;
 
-        const w = cypher.width || DEFAULT_RUIN_SIZE;
-        const h = cypher.height || DEFAULT_RUIN_SIZE;
+        const w = codex.width || DEFAULT_RUIN_SIZE;
+        const h = codex.height || DEFAULT_RUIN_SIZE;
         const canvasRect = canvas.getBoundingClientRect();
-        const px = canvasRect.left + (cypher.x + w) * viewport.zoom + viewport.offsetX + 12;
-        const py = canvasRect.top + cypher.y * viewport.zoom + viewport.offsetY;
+        const px = canvasRect.left + (codex.x + w) * viewport.zoom + viewport.offsetX + 12;
+        const py = canvasRect.top + codex.y * viewport.zoom + viewport.offsetY;
 
-        cypherConfigEl = document.createElement('div');
-        cypherConfigEl.className = 'ideogram-color-popover';
-        cypherConfigEl.style.position = 'fixed';
-        cypherConfigEl.style.left = px + 'px';
-        cypherConfigEl.style.top = py + 'px';
-        cypherConfigEl.style.minWidth = '200px';
-        cypherConfigEl.style.maxHeight = '80vh';
-        cypherConfigEl.style.overflowY = 'auto';
+        codexConfigEl = document.createElement('div');
+        codexConfigEl.className = 'ideogram-color-popover';
+        codexConfigEl.style.position = 'fixed';
+        codexConfigEl.style.left = px + 'px';
+        codexConfigEl.style.top = py + 'px';
+        codexConfigEl.style.minWidth = '200px';
+        codexConfigEl.style.maxHeight = '80vh';
+        codexConfigEl.style.overflowY = 'auto';
 
-        const currentRuinCount = cypher.ruinCount || 5;
-        const currentSlotSize = cypher.slotSize || 200;
-        if (!cypher.slots) cypher.slots = [];
-        while (cypher.slots.length < currentRuinCount) cypher.slots.push({ image: null, name: '' });
+        const currentRuinCount = codex.ruinCount || 5;
+        const currentSlotSize = codex.slotSize || 200;
+        if (!codex.slots) codex.slots = [];
+        while (codex.slots.length < currentRuinCount) codex.slots.push({ image: null, name: '' });
 
         // Build slot grid HTML
-        const hasLinkedSpindial = cyphers.some(c => c.isSpindial && c.linkedCypherId === cypher.id);
+        const hasLinkedSpindial = codices.some(c => c.isSpindial && c.linkedCodexId === codex.id);
         let slotGridHtml = '';
         for (let i = 0; i < currentRuinCount; i++) {
-            const slot = cypher.slots[i];
+            const slot = codex.slots[i];
             const hasImg = slot && slot.image;
             const label = hasImg ? (slot.name || 'Slot ' + (i + 1)) : '+';
             const lp = slot && slot.lockPosition;
             const lo = slot && slot.lockOrientation;
             const pin = slot && slot.pinPosition;
             const pDisabled = i === 0 && hasLinkedSpindial;
-            const oDisabled = !cypher.discOrientCoupling;
+            const oDisabled = !codex.discOrientCoupling;
             const pinDisabled = i === 0 && hasLinkedSpindial;
             slotGridHtml += `<div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
-                <div class="cypher-slot-item" data-slot="${i}" style="
+                <div class="codex-slot-item" data-slot="${i}" style="
                     width:40px; height:40px; border:1px solid ${hasImg ? '#4CAF50' : '#555'};
                     display:flex; align-items:center; justify-content:center; cursor:pointer;
                     position:relative; overflow:hidden; border-radius:3px;
                     background:${hasImg ? '#1a2a1a' : '#222'};">
                     ${hasImg ? `<img src="${slot.image}" style="width:100%;height:100%;object-fit:contain;">` : `<span style="color:#777;font-size:16px;">${label}</span>`}
-                    ${hasImg ? `<span class="cypher-slot-clear" data-slot="${i}" style="
+                    ${hasImg ? `<span class="codex-slot-clear" data-slot="${i}" style="
                         position:absolute; top:-2px; right:1px; font-size:10px; color:#ff4444;
                         cursor:pointer; line-height:1;">&times;</span>` : ''}
                 </div>
                 ${hasImg ? `<div style="display:flex; gap:2px;">
-                    <button class="cypher-slot-lock-pos" data-slot="${i}" title="${pDisabled ? 'Slot 0 is the spindial target' : 'Lock Position'}" style="
+                    <button class="codex-slot-lock-pos" data-slot="${i}" title="${pDisabled ? 'Slot 0 is the spindial target' : 'Lock Position'}" style="
                         width:18px; height:16px; font-size:9px; border:1px solid ${lp ? '#4CAF50' : '#555'};
                         background:${lp ? '#1a3a1a' : '#222'}; color:${lp ? '#4CAF50' : '#777'};
                         cursor:${pDisabled ? 'default' : 'pointer'}; border-radius:2px; padding:0;
                         opacity:${pDisabled ? '0.3' : '1'};">P</button>
-                    <button class="cypher-slot-lock-orient" data-slot="${i}" title="${oDisabled ? 'Requires disc-orientation coupling' : 'Lock Orientation'}" style="
+                    <button class="codex-slot-lock-orient" data-slot="${i}" title="${oDisabled ? 'Requires disc-orientation coupling' : 'Lock Orientation'}" style="
                         width:18px; height:16px; font-size:9px; border:1px solid ${lo ? '#4CAF50' : '#555'};
                         background:${lo ? '#1a3a1a' : '#222'}; color:${lo ? '#4CAF50' : '#777'};
                         cursor:${oDisabled ? 'default' : 'pointer'}; border-radius:2px; padding:0;
                         opacity:${oDisabled ? '0.3' : '1'};">O</button>
-                    <button class="cypher-slot-pin" data-slot="${i}" title="${pinDisabled ? 'Slot 0 is the spindial target' : 'Pin to screen position'}" style="
+                    <button class="codex-slot-pin" data-slot="${i}" title="${pinDisabled ? 'Slot 0 is the spindial target' : 'Pin to screen position'}" style="
                         width:18px; height:16px; font-size:9px; border:1px solid ${pin ? '#ff6b35' : '#555'};
                         background:${pin ? '#3a1a0a' : '#222'}; color:${pin ? '#ff6b35' : '#777'};
                         cursor:${pinDisabled ? 'default' : 'pointer'}; border-radius:2px; padding:0;
@@ -1514,44 +1595,40 @@ const IdeogramEditor = (() => {
             </div>`;
         }
 
-        const hasLock = cypher.solvedSlots !== null && cypher.solvedSlots !== undefined;
-        const isSpindial = cypher.isSpindial || false;
+        const hasLock = codex.solvedSlots !== null && codex.solvedSlots !== undefined;
+        const isSpindial = codex.isSpindial || false;
 
-        cypherConfigEl.innerHTML = `
-            <div style="font-size:12px; font-weight:bold; color:var(--accent-gold); margin-bottom:8px;">${isSpindial ? 'Spindial' : 'Cypher'} Config</div>
+        codexConfigEl.innerHTML = `
+            <div style="font-size:12px; font-weight:bold; color:var(--accent-gold); margin-bottom:8px;">${isSpindial ? 'Spindial' : 'Codex'} Config</div>
             <div style="margin-bottom:6px;">
                 <label style="font-size:11px; color:var(--text-secondary);">Name</label>
-                <input class="panel-input" id="cypher-cfg-name" type="text" value="${cypher.name || ''}" style="width:100%; box-sizing:border-box;">
+                <input class="panel-input" id="codex-cfg-name" type="text" value="${codex.name || ''}" style="width:100%; box-sizing:border-box;">
             </div>
             <div style="margin-bottom:6px;">
-                <label style="font-size:11px; color:var(--text-secondary);">Size</label>
-                <div style="display:flex; gap:4px; align-items:center; margin-top:2px;">
-                    <input class="panel-input" id="cypher-cfg-w" type="number" min="10" value="${Math.round(w)}" style="width:60px;">
-                    <span style="color:var(--text-secondary);">&times;</span>
-                    <input class="panel-input" id="cypher-cfg-h" type="number" min="10" value="${Math.round(h)}" style="width:60px;">
-                </div>
+                <label style="font-size:11px; color:var(--text-secondary);">Size: <span id="codex-cfg-size-val">${Math.round(w)}</span></label>
+                <input type="range" id="codex-cfg-size" min="50" max="2000" step="10" value="${Math.round(w)}" style="width:100%;">
             </div>
             <div style="margin-bottom:6px; display:flex; gap:8px;">
                 <div>
                     <label style="font-size:11px; color:var(--text-secondary);">Ruin Count</label>
-                    <input class="panel-input" id="cypher-cfg-ruin-count" type="number" min="1" max="20" value="${currentRuinCount}" style="width:60px;">
+                    <input class="panel-input" id="codex-cfg-ruin-count" type="number" min="1" max="20" value="${currentRuinCount}" style="width:60px;">
                 </div>
                 <div>
                     <label style="font-size:11px; color:var(--text-secondary);">Slot Size</label>
-                    <input class="panel-input" id="cypher-cfg-slot-size" type="number" min="10" max="2000" value="${currentSlotSize}" style="width:60px;">
+                    <input class="panel-input" id="codex-cfg-slot-size" type="number" min="10" max="2000" value="${currentSlotSize}" style="width:60px;">
                 </div>
             </div>
             <div style="margin-bottom:6px;">
-                <label style="font-size:11px; color:var(--text-secondary);">Ruin Scale: <span id="cypher-cfg-scale-val">${(cypher.ruinScale || 1).toFixed(2)}</span></label>
-                <input type="range" id="cypher-cfg-ruin-scale" min="0.1" max="3" step="0.05" value="${cypher.ruinScale || 1}" style="width:100%;">
+                <label style="font-size:11px; color:var(--text-secondary);">Ruin Scale: <span id="codex-cfg-scale-val">${(codex.ruinScale || 1).toFixed(2)}</span></label>
+                <input type="range" id="codex-cfg-ruin-scale" min="0.1" max="3" step="0.05" value="${codex.ruinScale || 1}" style="width:100%;">
             </div>
             <div style="margin-bottom:6px;">
-                <label style="font-size:11px; color:var(--text-secondary);">Proximity: <span id="cypher-cfg-proximity-val">${(cypher.ruinProximity || 0).toFixed(0)}</span></label>
-                <input type="range" id="cypher-cfg-proximity" min="-300" max="300" step="5" value="${cypher.ruinProximity || 0}" style="width:100%;">
+                <label style="font-size:11px; color:var(--text-secondary);">Proximity: <span id="codex-cfg-proximity-val">${(codex.ruinProximity || 0).toFixed(0)}</span></label>
+                <input type="range" id="codex-cfg-proximity" min="-300" max="300" step="5" value="${codex.ruinProximity || 0}" style="width:100%;">
             </div>
             <div style="margin-bottom:6px; border-top:1px solid #333; padding-top:6px;">
                 <label style="font-size:11px; color:var(--text-secondary);">Ruin Slots</label>
-                <div id="cypher-slot-grid" style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
+                <div id="codex-slot-grid" style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
                     ${slotGridHtml}
                 </div>
             </div>
@@ -1559,38 +1636,38 @@ const IdeogramEditor = (() => {
                 <label style="font-size:11px; color:var(--text-secondary);">Solution</label>
                 <div style="margin-top:4px; display:flex; gap:4px; align-items:center;">
                     ${hasLock
-                        ? `<span style="font-size:11px; color:#4CAF50;">Locked</span><button class="panel-btn" id="cypher-cfg-clear-lock" style="font-size:10px;">Clear</button><button class="panel-btn" id="cypher-cfg-reset" style="font-size:10px;">Reset</button>`
-                        : `<button class="panel-btn" id="cypher-cfg-lock">Lock Solution</button>`
+                        ? `<span style="font-size:11px; color:#4CAF50;">Locked</span><button class="panel-btn" id="codex-cfg-clear-lock" style="font-size:10px;">Clear</button><button class="panel-btn" id="codex-cfg-reset" style="font-size:10px;">Reset</button>`
+                        : `<button class="panel-btn" id="codex-cfg-lock">Lock Solution</button>`
                     }
                 </div>
             </div>
             <div style="margin-bottom:6px; border-top:1px solid #333; padding-top:6px; ${isSpindial ? 'opacity:0.3; pointer-events:none;' : ''}">
                 <label style="font-size:11px; color:var(--accent-gold); font-weight:bold;">Ideogram Type</label>
-                ${isSpindial ? '<div style="font-size:9px; color:#666; margin-top:2px;">Coupling is configured on the disc cypher</div>' : ''}
+                ${isSpindial ? '<div style="font-size:9px; color:#666; margin-top:2px;">Coupling is configured on the disc codex</div>' : ''}
                 <div style="margin-top:4px; display:flex; flex-direction:column; gap:4px;">
                     <label style="font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:6px; cursor:pointer;">
-                        <input type="checkbox" id="cypher-cfg-disc-orient" ${cypher.discOrientCoupling ? 'checked' : ''}>
+                        <input type="checkbox" id="codex-cfg-disc-orient" ${codex.discOrientCoupling ? 'checked' : ''}>
                         Disc-Orientation
                     </label>
                     <div style="font-size:9px; color:#666; margin-left:22px; margin-top:-2px;">Disc rotation rotates all unlocked ruins 90&deg;</div>
-                    <label style="font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:6px; cursor:${cypher.discOrientCoupling ? 'pointer' : 'default'}; opacity:${cypher.discOrientCoupling ? '1' : '0.4'};">
-                        <input type="checkbox" id="cypher-cfg-linked-spindial" ${cypher.linkedSpindial ? 'checked' : ''} ${!cypher.discOrientCoupling ? 'disabled' : ''}>
+                    <label style="font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:6px; cursor:${codex.discOrientCoupling ? 'pointer' : 'default'}; opacity:${codex.discOrientCoupling ? '1' : '0.4'};">
+                        <input type="checkbox" id="codex-cfg-linked-spindial" ${codex.linkedSpindial ? 'checked' : ''} ${!codex.discOrientCoupling ? 'disabled' : ''}>
                         Linked Spindial
                     </label>
                     <div style="font-size:9px; color:#666; margin-left:22px; margin-top:-2px;">Spindial also rotates opposite ruin</div>
-                    <label style="font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:6px; cursor:${cypher.discOrientCoupling ? 'pointer' : 'default'}; opacity:${cypher.discOrientCoupling ? '1' : '0.4'};">
-                        <input type="checkbox" id="cypher-cfg-mirror" ${cypher.mirrorCoupling ? 'checked' : ''} ${!cypher.discOrientCoupling ? 'disabled' : ''}>
+                    <label style="font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:6px; cursor:${codex.discOrientCoupling ? 'pointer' : 'default'}; opacity:${codex.discOrientCoupling ? '1' : '0.4'};">
+                        <input type="checkbox" id="codex-cfg-mirror" ${codex.mirrorCoupling ? 'checked' : ''} ${!codex.discOrientCoupling ? 'disabled' : ''}>
                         Mirror
                     </label>
                     <div style="font-size:9px; color:#666; margin-left:22px; margin-top:-2px;">Disc rotation also flips unlocked ruins</div>
                     <div style="border-top:1px solid #333; margin-top:6px; padding-top:6px;">
-                    <label style="font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:6px; cursor:${cypher.slots && cypher.slots.some(s => s.pinPosition) ? 'pointer' : 'default'}; opacity:${cypher.slots && cypher.slots.some(s => s.pinPosition) ? '1' : '0.4'};">
-                        <input type="checkbox" id="cypher-cfg-gate-rotate" ${cypher.gateRotate ? 'checked' : ''} ${!(cypher.slots && cypher.slots.some(s => s.pinPosition)) ? 'disabled' : ''}>
+                    <label style="font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:6px; cursor:${codex.slots && codex.slots.some(s => s.pinPosition) ? 'pointer' : 'default'}; opacity:${codex.slots && codex.slots.some(s => s.pinPosition) ? '1' : '0.4'};">
+                        <input type="checkbox" id="codex-cfg-gate-rotate" ${codex.gateRotate ? 'checked' : ''} ${!(codex.slots && codex.slots.some(s => s.pinPosition)) ? 'disabled' : ''}>
                         Gate Rotate
                     </label>
                     <div style="font-size:9px; color:#666; margin-left:22px; margin-top:-2px;">Ruin passing pinned position gets +90&deg;</div>
-                    <label style="font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:6px; cursor:${cypher.slots && cypher.slots.some(s => s.pinPosition) ? 'pointer' : 'default'}; opacity:${cypher.slots && cypher.slots.some(s => s.pinPosition) ? '1' : '0.4'}; margin-top:4px;">
-                        <input type="checkbox" id="cypher-cfg-gate-flip" ${cypher.gateFlip ? 'checked' : ''} ${!(cypher.slots && cypher.slots.some(s => s.pinPosition)) ? 'disabled' : ''}>
+                    <label style="font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:6px; cursor:${codex.slots && codex.slots.some(s => s.pinPosition) ? 'pointer' : 'default'}; opacity:${codex.slots && codex.slots.some(s => s.pinPosition) ? '1' : '0.4'}; margin-top:4px;">
+                        <input type="checkbox" id="codex-cfg-gate-flip" ${codex.gateFlip ? 'checked' : ''} ${!(codex.slots && codex.slots.some(s => s.pinPosition)) ? 'disabled' : ''}>
                         Gate Flip
                     </label>
                     <div style="font-size:9px; color:#666; margin-left:22px; margin-top:-2px;">Ruin passing pinned position gets flipped</div>
@@ -1610,11 +1687,11 @@ const IdeogramEditor = (() => {
             </div>
             ${isSpindial ? `
             <div style="margin-bottom:6px; border-top:1px solid #333; padding-top:6px;">
-                <label style="font-size:11px; color:var(--text-secondary);">Linked Cypher</label>
-                <select class="panel-input" id="cypher-cfg-linked" style="width:100%; box-sizing:border-box; margin-top:2px;">
+                <label style="font-size:11px; color:var(--text-secondary);">Linked Codex</label>
+                <select class="panel-input" id="codex-cfg-linked" style="width:100%; box-sizing:border-box; margin-top:2px;">
                     <option value="">— None —</option>
-                    ${cyphers.filter(c => c !== cypher && !c.isSpindial).map(c =>
-                        `<option value="${c.id}" ${cypher.linkedCypherId === c.id ? 'selected' : ''}>${c.name || c.id}</option>`
+                    ${codices.filter(c => c !== codex && !c.isSpindial).map(c =>
+                        `<option value="${c.id}" ${codex.linkedCodexId === c.id ? 'selected' : ''}>${c.name || c.id}</option>`
                     ).join('')}
                 </select>
                 <div style="font-size:10px; color:var(--text-secondary); margin-top:4px;">Click &amp; drag on disc/spindial to rotate</div>
@@ -1622,256 +1699,255 @@ const IdeogramEditor = (() => {
             ` : ''}
             <div style="margin-bottom:6px; border-top:1px solid #333; padding-top:6px;">
                 <label style="font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:6px; cursor:pointer;">
-                    <input type="checkbox" id="cypher-cfg-spindial" ${isSpindial ? 'checked' : ''}>
+                    <input type="checkbox" id="codex-cfg-spindial" ${isSpindial ? 'checked' : ''}>
                     Spindial
                 </label>
             </div>
             <div style="margin-top:8px;">
-                <button class="panel-btn" id="cypher-cfg-delete" style="color:#ff4444;">Delete</button>
+                <button class="panel-btn" id="codex-cfg-delete" style="color:#ff4444;">Delete</button>
             </div>
         `;
 
-        document.getElementById('hotspot-overlay').appendChild(cypherConfigEl);
-        cypherConfigEl.addEventListener('mousedown', (e) => e.stopPropagation());
+        document.getElementById('hotspot-overlay').appendChild(codexConfigEl);
+        codexConfigEl.addEventListener('mousedown', (e) => e.stopPropagation());
 
         // Bind events — name
-        const nameInput = cypherConfigEl.querySelector('#cypher-cfg-name');
-        nameInput.addEventListener('input', () => { cypher.name = nameInput.value; });
+        const nameInput = codexConfigEl.querySelector('#codex-cfg-name');
+        nameInput.addEventListener('input', () => { codex.name = nameInput.value; });
 
         // Ruin count — also resize slots array
-        const ruinCountInput = cypherConfigEl.querySelector('#cypher-cfg-ruin-count');
+        const ruinCountInput = codexConfigEl.querySelector('#codex-cfg-ruin-count');
         ruinCountInput.addEventListener('input', () => {
             const v = parseInt(ruinCountInput.value);
             if (v >= 1 && v <= 20) {
-                cypher.ruinCount = v;
-                while (cypher.slots.length < v) cypher.slots.push({ image: null, name: '' });
-                if (cypher.slots.length > v) cypher.slots.length = v;
+                codex.ruinCount = v;
+                while (codex.slots.length < v) codex.slots.push({ image: null, name: '' });
+                if (codex.slots.length > v) codex.slots.length = v;
                 render();
-                showCypherConfig(cypher);
+                showCodexConfig(codex);
             }
         });
 
         // Slot size
-        const slotSizeInput = cypherConfigEl.querySelector('#cypher-cfg-slot-size');
+        const slotSizeInput = codexConfigEl.querySelector('#codex-cfg-slot-size');
         slotSizeInput.addEventListener('input', () => {
             const v = parseInt(slotSizeInput.value);
-            if (v >= 10 && v <= 2000) { cypher.slotSize = v; render(); }
+            if (v >= 10 && v <= 2000) { codex.slotSize = v; render(); }
         });
 
-        const ruinScaleSlider = cypherConfigEl.querySelector('#cypher-cfg-ruin-scale');
-        const ruinScaleVal = cypherConfigEl.querySelector('#cypher-cfg-scale-val');
+        const ruinScaleSlider = codexConfigEl.querySelector('#codex-cfg-ruin-scale');
+        const ruinScaleVal = codexConfigEl.querySelector('#codex-cfg-scale-val');
         ruinScaleSlider.addEventListener('input', () => {
-            cypher.ruinScale = parseFloat(ruinScaleSlider.value);
-            ruinScaleVal.textContent = cypher.ruinScale.toFixed(2);
+            codex.ruinScale = parseFloat(ruinScaleSlider.value);
+            ruinScaleVal.textContent = codex.ruinScale.toFixed(2);
             render();
         });
 
-        const proximitySlider = cypherConfigEl.querySelector('#cypher-cfg-proximity');
-        const proximityVal = cypherConfigEl.querySelector('#cypher-cfg-proximity-val');
+        const proximitySlider = codexConfigEl.querySelector('#codex-cfg-proximity');
+        const proximityVal = codexConfigEl.querySelector('#codex-cfg-proximity-val');
         proximitySlider.addEventListener('input', () => {
-            cypher.ruinProximity = parseFloat(proximitySlider.value);
-            proximityVal.textContent = cypher.ruinProximity.toFixed(0);
+            codex.ruinProximity = parseFloat(proximitySlider.value);
+            proximityVal.textContent = codex.ruinProximity.toFixed(0);
             render();
         });
 
         // Rotation buttons
 
-        // Size inputs
-        const wInput = cypherConfigEl.querySelector('#cypher-cfg-w');
-        const hInput = cypherConfigEl.querySelector('#cypher-cfg-h');
-        wInput.addEventListener('input', () => {
-            const v = parseInt(wInput.value);
-            if (v >= 10) { cypher.width = v; render(); }
-        });
-        hInput.addEventListener('input', () => {
-            const v = parseInt(hInput.value);
-            if (v >= 10) { cypher.height = v; render(); }
+        // Size slider
+        const sizeSlider = codexConfigEl.querySelector('#codex-cfg-size');
+        const sizeVal = codexConfigEl.querySelector('#codex-cfg-size-val');
+        sizeSlider.addEventListener('input', () => {
+            const v = parseInt(sizeSlider.value);
+            codex.width = v;
+            codex.height = v;
+            sizeVal.textContent = v;
+            render();
         });
 
         // Slot grid — click to assign, x to clear
-        cypherConfigEl.querySelectorAll('.cypher-slot-item').forEach(item => {
+        codexConfigEl.querySelectorAll('.codex-slot-item').forEach(item => {
             item.addEventListener('click', (e) => {
-                if (e.target.classList.contains('cypher-slot-clear')) return;
+                if (e.target.classList.contains('codex-slot-clear')) return;
                 e.stopPropagation();
                 const idx = parseInt(item.dataset.slot);
-                assignSlotImage(cypher, idx);
+                assignSlotImage(codex, idx);
                 // Re-render config after a short delay for image to load
-                setTimeout(() => showCypherConfig(cypher), 500);
+                setTimeout(() => showCodexConfig(codex), 500);
             });
         });
-        cypherConfigEl.querySelectorAll('.cypher-slot-clear').forEach(btn => {
+        codexConfigEl.querySelectorAll('.codex-slot-clear').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const idx = parseInt(btn.dataset.slot);
-                cypher.slots[idx] = { image: null, name: '' };
-                delete slotImageCache[cypher.id + '_' + idx];
+                codex.slots[idx] = { image: null, name: '' };
+                delete slotImageCache[codex.id + '_' + idx];
                 render();
-                showCypherConfig(cypher);
+                showCodexConfig(codex);
             });
         });
 
         // Solution lock
-        const lockBtn = cypherConfigEl.querySelector('#cypher-cfg-lock');
+        const lockBtn = codexConfigEl.querySelector('#codex-cfg-lock');
         if (lockBtn) {
             lockBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                cypher.solvedSlots = cypher.slots.map(s => ({ ...s }));
-                showCypherConfig(cypher);
+                codex.solvedSlots = codex.slots.map(s => ({ ...s }));
+                showCodexConfig(codex);
             });
         }
-        const clearLockBtn = cypherConfigEl.querySelector('#cypher-cfg-clear-lock');
+        const clearLockBtn = codexConfigEl.querySelector('#codex-cfg-clear-lock');
         if (clearLockBtn) {
             clearLockBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                cypher.solvedSlots = null;
-                showCypherConfig(cypher);
+                codex.solvedSlots = null;
+                showCodexConfig(codex);
             });
         }
-        const resetBtn = cypherConfigEl.querySelector('#cypher-cfg-reset');
+        const resetBtn = codexConfigEl.querySelector('#codex-cfg-reset');
         if (resetBtn) {
             resetBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (cypher.solvedSlots) {
-                    cypher.slots = cypher.solvedSlots.map(s => ({ ...s }));
-                    cypher.rotation = 0;
-                    rebuildSlotImageCache(cypher);
+                if (codex.solvedSlots) {
+                    codex.slots = codex.solvedSlots.map(s => ({ ...s }));
+                    codex.rotation = 0;
+                    rebuildSlotImageCache(codex);
                     render();
-                    showCypherConfig(cypher);
+                    showCodexConfig(codex);
                 }
             });
         }
 
         // Coupling checkboxes
-        const discOrientCheck = cypherConfigEl.querySelector('#cypher-cfg-disc-orient');
+        const discOrientCheck = codexConfigEl.querySelector('#codex-cfg-disc-orient');
         if (discOrientCheck) {
             discOrientCheck.addEventListener('change', () => {
-                cypher.discOrientCoupling = discOrientCheck.checked;
+                codex.discOrientCoupling = discOrientCheck.checked;
                 if (!discOrientCheck.checked) {
-                    cypher.linkedSpindial = false;
-                    cypher.mirrorCoupling = false;
+                    codex.linkedSpindial = false;
+                    codex.mirrorCoupling = false;
                     // Clear O locks since they require coupling
-                    if (cypher.slots) cypher.slots.forEach(s => { if (s) s.lockOrientation = false; });
+                    if (codex.slots) codex.slots.forEach(s => { if (s) s.lockOrientation = false; });
                 }
-                showCypherConfig(cypher);
+                showCodexConfig(codex);
             });
         }
-        const linkedSpindialCheck = cypherConfigEl.querySelector('#cypher-cfg-linked-spindial');
+        const linkedSpindialCheck = codexConfigEl.querySelector('#codex-cfg-linked-spindial');
         if (linkedSpindialCheck) {
             linkedSpindialCheck.addEventListener('change', () => {
-                cypher.linkedSpindial = linkedSpindialCheck.checked;
+                codex.linkedSpindial = linkedSpindialCheck.checked;
             });
         }
-        const mirrorCheck = cypherConfigEl.querySelector('#cypher-cfg-mirror');
+        const mirrorCheck = codexConfigEl.querySelector('#codex-cfg-mirror');
         if (mirrorCheck) {
             mirrorCheck.addEventListener('change', () => {
-                cypher.mirrorCoupling = mirrorCheck.checked;
+                codex.mirrorCoupling = mirrorCheck.checked;
             });
         }
 
         // Per-slot lock buttons
-        const _hasLinkedSpindial = cyphers.some(c => c.isSpindial && c.linkedCypherId === cypher.id);
-        cypherConfigEl.querySelectorAll('.cypher-slot-lock-pos').forEach(btn => {
+        const _hasLinkedSpindial = codices.some(c => c.isSpindial && c.linkedCodexId === codex.id);
+        codexConfigEl.querySelectorAll('.codex-slot-lock-pos').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const idx = parseInt(btn.dataset.slot);
                 if (idx === 0 && _hasLinkedSpindial) return;
-                const slot = cypher.slots[idx];
+                const slot = codex.slots[idx];
                 if (slot) {
                     slot.lockPosition = !slot.lockPosition;
                     if (slot.lockPosition) { slot.lockOrientation = false; slot.pinPosition = false; }
-                    showCypherConfig(cypher);
+                    showCodexConfig(codex);
                 }
             });
         });
-        cypherConfigEl.querySelectorAll('.cypher-slot-lock-orient').forEach(btn => {
+        codexConfigEl.querySelectorAll('.codex-slot-lock-orient').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (!cypher.discOrientCoupling) return;
+                if (!codex.discOrientCoupling) return;
                 const idx = parseInt(btn.dataset.slot);
-                const slot = cypher.slots[idx];
+                const slot = codex.slots[idx];
                 if (slot) {
                     slot.lockOrientation = !slot.lockOrientation;
                     if (slot.lockOrientation) { slot.lockPosition = false; slot.pinPosition = false; }
-                    showCypherConfig(cypher);
+                    showCodexConfig(codex);
                 }
             });
         });
-        cypherConfigEl.querySelectorAll('.cypher-slot-pin').forEach(btn => {
+        codexConfigEl.querySelectorAll('.codex-slot-pin').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const idx = parseInt(btn.dataset.slot);
                 if (idx === 0 && _hasLinkedSpindial) return;
-                const slot = cypher.slots[idx];
+                const slot = codex.slots[idx];
                 if (slot) {
                     const newVal = !slot.pinPosition;
                     // Clear pin from all other slots first (only one pin allowed)
-                    cypher.slots.forEach(s => { if (s) s.pinPosition = false; });
+                    codex.slots.forEach(s => { if (s) s.pinPosition = false; });
                     slot.pinPosition = newVal;
                     if (slot.pinPosition) { slot.lockPosition = false; slot.lockOrientation = false; }
                     // Auto-clear gate effects if no pin
-                    if (!cypher.slots.some(s => s.pinPosition)) {
-                        cypher.gateRotate = false;
-                        cypher.gateFlip = false;
+                    if (!codex.slots.some(s => s.pinPosition)) {
+                        codex.gateRotate = false;
+                        codex.gateFlip = false;
                     }
-                    showCypherConfig(cypher);
+                    showCodexConfig(codex);
                     render();
                 }
             });
         });
 
         // Gate checkboxes
-        const gateRotateCheck = cypherConfigEl.querySelector('#cypher-cfg-gate-rotate');
+        const gateRotateCheck = codexConfigEl.querySelector('#codex-cfg-gate-rotate');
         if (gateRotateCheck) {
             gateRotateCheck.addEventListener('change', () => {
-                cypher.gateRotate = gateRotateCheck.checked;
+                codex.gateRotate = gateRotateCheck.checked;
             });
         }
-        const gateFlipCheck = cypherConfigEl.querySelector('#cypher-cfg-gate-flip');
+        const gateFlipCheck = codexConfigEl.querySelector('#codex-cfg-gate-flip');
         if (gateFlipCheck) {
             gateFlipCheck.addEventListener('change', () => {
-                cypher.gateFlip = gateFlipCheck.checked;
+                codex.gateFlip = gateFlipCheck.checked;
             });
         }
 
         // Spindial toggle
-        const spindialCheck = cypherConfigEl.querySelector('#cypher-cfg-spindial');
+        const spindialCheck = codexConfigEl.querySelector('#codex-cfg-spindial');
         spindialCheck.addEventListener('change', () => {
-            cypher.isSpindial = spindialCheck.checked;
-            selectedCypher = cypher;
+            codex.isSpindial = spindialCheck.checked;
+            selectedCodex = codex;
             render();
-            showCypherConfig(cypher);
+            showCodexConfig(codex);
         });
 
-        // Spindial linked cypher
-        const linkedSelect = cypherConfigEl.querySelector('#cypher-cfg-linked');
+        // Spindial linked codex
+        const linkedSelect = codexConfigEl.querySelector('#codex-cfg-linked');
         if (linkedSelect) linkedSelect.addEventListener('change', () => {
-            cypher.linkedCypherId = linkedSelect.value || null;
+            codex.linkedCodexId = linkedSelect.value || null;
         });
 
         // Delete
-        cypherConfigEl.querySelector('#cypher-cfg-delete').addEventListener('click', (e) => {
+        codexConfigEl.querySelector('#codex-cfg-delete').addEventListener('click', (e) => {
             e.stopPropagation();
-            cyphers = cyphers.filter(c => c !== cypher);
-            delete cypherImageCache[cypher.id];
+            codices = codices.filter(c => c !== codex);
+            delete codexImageCache[codex.id];
             // Clean up slot image cache
-            if (cypher.slots) {
-                cypher.slots.forEach((s, i) => delete slotImageCache[cypher.id + '_' + i]);
+            if (codex.slots) {
+                codex.slots.forEach((s, i) => delete slotImageCache[codex.id + '_' + i]);
             }
-            deselectCypher();
+            deselectCodex();
         });
     }
 
-    function rebuildSlotImageCache(cypher) {
-        if (!cypher.slots) return;
-        cypher.slots.forEach((s, i) => {
-            const key = cypher.id + '_' + i;
+    function rebuildSlotImageCache(codex) {
+        if (!codex.slots) return;
+        codex.slots.forEach((s, i) => {
+            const key = codex.id + '_' + i;
             delete slotImageCache[key];
-            if (s.image) loadSlotImage(cypher, i);
+            if (s.image) loadSlotImage(codex, i);
         });
     }
 
-    function closeCypherConfig() {
-        if (cypherConfigEl) { cypherConfigEl.remove(); cypherConfigEl = null; }
+    function closeCodexConfig() {
+        if (codexConfigEl) { codexConfigEl.remove(); codexConfigEl = null; }
     }
 
     // ========== TOOLSET UI ==========
@@ -1902,17 +1978,17 @@ const IdeogramEditor = (() => {
                     <span class="tool-icon">&#x270E;</span>
                     <span class="tool-label">Ideogram</span>
                 </button>
-                <button class="blueprint-tool" data-tool="cypher" title="Cypher">
+                <button class="blueprint-tool" data-tool="codex" title="Codex">
                     <span class="tool-icon">&#x2609;</span>
-                    <span class="tool-label">Cypher</span>
+                    <span class="tool-label">Codex</span>
                 </button>
-                <button class="blueprint-tool" data-tool="press" title="Press">
+                <button class="blueprint-tool" data-tool="isopress" title="Isopress">
                     <span class="tool-icon">&#x2B22;</span>
-                    <span class="tool-label">Press</span>
+                    <span class="tool-label">Isopress</span>
                 </button>
-                <button class="blueprint-tool" data-tool="lathe" title="Lathe">
+                <button class="blueprint-tool" data-tool="isolathe" title="Isolathe">
                     <span class="tool-icon">&#x2B21;</span>
-                    <span class="tool-label">Lathe</span>
+                    <span class="tool-label">Isolathe</span>
                 </button>
             </div>
             <div id="ideogram-subtool-row" class="ideogram-subtool-row" style="display:none;"></div>
@@ -2054,7 +2130,7 @@ const IdeogramEditor = (() => {
         closeColorPopover();
         closeTextInput();
         closeCutMenu();
-        closeCypherConfig();
+        closeCodexConfig();
         if (cutStamp) { cutStamp = null; cutStampPos = null; }
         cutSelection = null;
         cutBox = null;
@@ -2065,15 +2141,15 @@ const IdeogramEditor = (() => {
         cutMouseStart = null;
         textDrawing = null;
         selectedText = null;
-        selectedCypher = null;
-        draggingCypher = null;
-        rotatingCypherDrag = null;
-        selectedPress = null;
-        draggingPress = null;
-        closePressConfig();
-        selectedLathe = null;
-        draggingLathe = null;
-        closeLatheConfig();
+        selectedCodex = null;
+        draggingCodex = null;
+        rotatingCodexDrag = null;
+        selectedIsopress = null;
+        draggingIsopress = null;
+        closeIsopressConfig();
+        selectedIsolathe = null;
+        draggingIsolathe = null;
+        closeIsolatheConfig();
         resizing = null;
         selectMouseDown = null;
         shapeDrawing = null;
@@ -2371,7 +2447,7 @@ const IdeogramEditor = (() => {
         container.querySelectorAll('.ideogram-ruin-item').forEach(item => {
             item.addEventListener('click', () => {
                 const ruinId = item.dataset.id;
-                isomarkRuinId = ruinId;
+                ruinMarkId = ruinId;
                 // Highlight the selected ruin
                 container.querySelectorAll('.ideogram-ruin-item').forEach(el => el.classList.remove('isomark-selected'));
                 item.classList.add('isomark-selected');
@@ -2923,36 +2999,36 @@ const IdeogramEditor = (() => {
         const pCtx = cvs.getContext('2d');
         pCtx.clearRect(0, 0, cvs.width, cvs.height);
 
-        if (!isomarkPlateImage) return;
+        if (!isoplateImage) return;
 
-        // Draw plate scaled to fit preview, centered
-        const pw = isomarkPlateImage.naturalWidth || isomarkPlateImage.width;
-        const ph = isomarkPlateImage.naturalHeight || isomarkPlateImage.height;
+        // Draw IsoPlate scaled to fit preview, centered
+        const pw = isoplateImage.naturalWidth || isoplateImage.width;
+        const ph = isoplateImage.naturalHeight || isoplateImage.height;
         const scale = Math.min(cvs.width / pw, cvs.height / ph);
         const sw = pw * scale;
         const sh = ph * scale;
         const sx = (cvs.width - sw) / 2;
         const sy = (cvs.height - sh) / 2;
-        pCtx.drawImage(isomarkPlateImage, sx, sy, sw, sh);
+        pCtx.drawImage(isoplateImage, sx, sy, sw, sh);
 
-        // Draw selected ruin overlay centered on plate, sized proportionally
-        if (isomarkRuinId && selectedRuin && selectedRuin.ruinId === isomarkRuinId) {
+        // Draw ruinMark overlay centered on IsoPlate, sized proportionally
+        if (ruinMarkId && selectedRuin && selectedRuin.ruinId === ruinMarkId) {
             const composite = buildRuinComposite(selectedRuin);
             if (composite) {
-                // Use ruin's canvas size relative to plate's natural size
+                // Use ruin's canvas size relative to IsoPlate's natural size
                 const drw = (composite.width / pw) * sw;
                 const drh = (composite.height / ph) * sh;
                 const drx = sx + (sw - drw) / 2;
                 const dry = sy + (sh - drh) / 2;
                 pCtx.drawImage(composite, drx, dry, drw, drh);
             }
-        } else if (isomarkRuinId) {
+        } else if (ruinMarkId) {
             // Fallback: raw library image (no placed ruin selected)
-            const ruinImg = imageCache[isomarkRuinId];
+            const ruinImg = imageCache[ruinMarkId];
             if (ruinImg && ruinImg.complete !== false) {
                 const rw = ruinImg.naturalWidth || ruinImg.width;
                 const rh = ruinImg.naturalHeight || ruinImg.height;
-                // Scale to fit 70% of plate area as default
+                // Scale to fit 70% of IsoPlate area as default
                 const maxW = sw * 0.7;
                 const maxH = sh * 0.7;
                 const rScale = Math.min(maxW / rw, maxH / rh, 1);
@@ -2967,39 +3043,39 @@ const IdeogramEditor = (() => {
 
     function updateIsomarkSaveBtn() {
         const btn = document.getElementById('isomark-save');
-        if (btn) btn.disabled = !(isomarkPlateImage && isomarkRuinId);
+        if (btn) btn.disabled = !(isoplateImage && ruinMarkId);
     }
 
-    async function saveIsomarkPlate() {
-        if (!isomarkPlateImage || !isomarkRuinId) return;
+    async function saveIsomark() {
+        if (!isoplateImage || !ruinMarkId) return;
 
-        const plateName = prompt('Name for this plate:', 'IsoMarked Plate');
+        const plateName = prompt('Name for this IsoMark:', 'IsoMark');
         if (!plateName) return;
 
         try {
-            const pw = isomarkPlateImage.naturalWidth || isomarkPlateImage.width;
-            const ph = isomarkPlateImage.naturalHeight || isomarkPlateImage.height;
+            const pw = isoplateImage.naturalWidth || isoplateImage.width;
+            const ph = isoplateImage.naturalHeight || isoplateImage.height;
 
             const offscreen = document.createElement('canvas');
             offscreen.width = pw;
             offscreen.height = ph;
             const oCtx = offscreen.getContext('2d');
 
-            // Draw plate
-            oCtx.drawImage(isomarkPlateImage, 0, 0, pw, ph);
+            // Draw IsoPlate
+            oCtx.drawImage(isoplateImage, 0, 0, pw, ph);
 
             // Draw ruin centered (with effects if a placed ruin is selected)
             let ruinSource = null;
-            if (selectedRuin && selectedRuin.ruinId === isomarkRuinId) {
+            if (selectedRuin && selectedRuin.ruinId === ruinMarkId) {
                 ruinSource = buildRuinComposite(selectedRuin);
             }
             if (!ruinSource) {
-                const ruinImg = imageCache[isomarkRuinId];
+                const ruinImg = imageCache[ruinMarkId];
                 if (ruinImg && ruinImg.complete !== false) ruinSource = ruinImg;
             }
             if (ruinSource) {
                 let drw, drh;
-                if (selectedRuin && selectedRuin.ruinId === isomarkRuinId) {
+                if (selectedRuin && selectedRuin.ruinId === ruinMarkId) {
                     drw = selectedRuin.width || DEFAULT_RUIN_SIZE;
                     drh = selectedRuin.height || DEFAULT_RUIN_SIZE;
                 } else {
@@ -3056,11 +3132,11 @@ const IdeogramEditor = (() => {
     }
 
     function clearIsomark() {
-        isomarkPlateImage = null;
-        isomarkPlatePath = '';
-        isomarkRuinId = null;
-        const label = document.getElementById('isomark-plate-label');
-        if (label) label.textContent = 'No plate set';
+        isoplateImage = null;
+        isoplatePath = '';
+        ruinMarkId = null;
+        const label = document.getElementById('isoplate-label');
+        if (label) label.textContent = 'No IsoPlate set';
         const container = document.getElementById('ideogram-ruin-list');
         if (container) container.querySelectorAll('.ideogram-ruin-item').forEach(el => el.classList.remove('isomark-selected'));
         renderIsomarkPreview();
@@ -3161,20 +3237,20 @@ const IdeogramEditor = (() => {
         const mx = (e.clientX - rect.left - viewport.offsetX) / viewport.zoom;
         const my = (e.clientY - rect.top - viewport.offsetY) / viewport.zoom;
 
-        // Dev lock: everything frozen except drag-to-rotate on any cypher
+        // Dev lock: everything frozen except drag-to-rotate on any codex
         if (canvasLocked) {
-            const hitCy = hitTestCypher(mx, my);
+            const hitCy = hitTestCodex(mx, my);
             if (hitCy) {
                 const cw = hitCy.width || DEFAULT_RUIN_SIZE;
                 const ch = hitCy.height || DEFAULT_RUIN_SIZE;
                 const ccx = hitCy.x + cw / 2;
                 const ccy = hitCy.y + ch / 2;
-                if (cypherSnapAnim && cypherSnapAnim.cypher === hitCy) {
-                    hitCy.rotation = cypherSnapAnim.toRot;
-                    cypherSnapAnim = null;
+                if (codexSnapAnim && codexSnapAnim.codex === hitCy) {
+                    hitCy.rotation = codexSnapAnim.toRot;
+                    codexSnapAnim = null;
                 }
-                rotatingCypherDrag = {
-                    cypher: hitCy,
+                rotatingCodexDrag = {
+                    codex: hitCy,
                     lastAngle: Math.atan2(my - ccy, mx - ccx),
                     accumulated: 0
                 };
@@ -3216,101 +3292,133 @@ const IdeogramEditor = (() => {
             return;
         }
 
-        // Cypher tool — click a placed ruin to convert, or click existing cypher to select
-        if (activeTool === 'cypher') {
-            // Check slot boxes on selected cypher first
-            if (selectedCypher) {
-                const slotIdx = hitTestSlotBox(selectedCypher, mx, my);
+        // Codex tool — click a placed ruin to convert, or click existing codex to select
+        if (activeTool === 'codex') {
+            // Check slot boxes on selected codex first
+            if (selectedCodex) {
+                const slotIdx = hitTestSlotBox(selectedCodex, mx, my);
                 if (slotIdx >= 0) {
-                    assignSlotImage(selectedCypher, slotIdx);
+                    assignSlotImage(selectedCodex, slotIdx);
                     return;
                 }
             }
-            // Then check if clicking an existing cypher
-            const hitCy = hitTestCypher(mx, my);
+            // Then check if clicking an existing codex
+            const hitCy = hitTestCodex(mx, my);
             if (hitCy) {
-                if (hitCy === selectedCypher) {
+                if (hitCy === selectedCodex) {
                     // Already selected — start rotate gesture
-                    if (cypherSnapAnim && cypherSnapAnim.cypher === hitCy) {
-                        hitCy.rotation = cypherSnapAnim.toRot;
-                        cypherSnapAnim = null;
+                    if (codexSnapAnim && codexSnapAnim.codex === hitCy) {
+                        hitCy.rotation = codexSnapAnim.toRot;
+                        codexSnapAnim = null;
                     }
                     const cw = hitCy.width || DEFAULT_RUIN_SIZE;
                     const ch = hitCy.height || DEFAULT_RUIN_SIZE;
                     const ccx = hitCy.x + cw / 2;
                     const ccy = hitCy.y + ch / 2;
-                    rotatingCypherDrag = {
-                        cypher: hitCy,
+                    rotatingCodexDrag = {
+                        codex: hitCy,
                         lastAngle: Math.atan2(my - ccy, mx - ccx),
                         accumulated: 0
                     };
-                    selectMouseDown = { elem: hitCy, type: 'cypher', startMouseX: mx, startMouseY: my };
-                    closeCypherConfig();
+                    selectMouseDown = { elem: hitCy, type: 'codex', startMouseX: mx, startMouseY: my };
+                    closeCodexConfig();
                 } else {
-                    selectCypher(hitCy);
+                    selectCodex(hitCy);
                 }
                 return;
             }
             // Then check if clicking a placed ruin to convert
             const hitRuin = hitTestRuin(mx, my);
             if (hitRuin) {
-                convertRuinToCypher(hitRuin);
+                convertRuinToCodex(hitRuin);
                 return;
             }
             // Click on empty space — deselect
-            if (selectedCypher) deselectCypher();
+            if (selectedCodex) deselectCodex();
             return;
         }
 
-        // Press tool — click a placed ruin to convert, or click existing press to select
-        if (activeTool === 'press') {
-            const hitP = hitTestPress(mx, my);
+        // Isopress tool — click a placed ruin to convert, or click existing isopress to select
+        if (activeTool === 'isopress') {
+            // Check resize handles first
+            if (selectedIsopress) {
+                const handleId = hitTestHandle(mx, my);
+                if (handleId) {
+                    resizing = {
+                        elem: selectedIsopress,
+                        handle: handleId,
+                        startX: mx, startY: my,
+                        origX: selectedIsopress.x, origY: selectedIsopress.y,
+                        origW: selectedIsopress.width || DEFAULT_RUIN_SIZE,
+                        origH: selectedIsopress.height || DEFAULT_RUIN_SIZE
+                    };
+                    closeIsopressConfig();
+                    return;
+                }
+            }
+            const hitP = hitTestIsopress(mx, my);
             if (hitP) {
-                if (hitP === selectedPress) {
-                    draggingPress = {
-                        press: hitP,
+                if (hitP === selectedIsopress) {
+                    draggingIsopress = {
+                        isopress: hitP,
                         startMouseX: mx, startMouseY: my,
                         startX: hitP.x, startY: hitP.y
                     };
-                    selectMouseDown = { elem: hitP, type: 'press', startMouseX: mx, startMouseY: my };
-                    closePressConfig();
+                    selectMouseDown = { elem: hitP, type: 'isopress', startMouseX: mx, startMouseY: my };
+                    closeIsopressConfig();
                 } else {
-                    selectPress(hitP);
+                    selectIsopress(hitP);
                 }
                 return;
             }
             const hitRuin = hitTestRuin(mx, my);
             if (hitRuin) {
-                convertRuinToPress(hitRuin);
+                convertRuinToIsopress(hitRuin);
                 return;
             }
-            if (selectedPress) deselectPress();
+            if (selectedIsopress) deselectIsopress();
             return;
         }
 
-        // Lathe tool — click a placed ruin to convert, or click existing lathe to select
-        if (activeTool === 'lathe') {
-            const hitL = hitTestLathe(mx, my);
+        // Isolathe tool — click a placed ruin to convert, or click existing isolathe to select
+        if (activeTool === 'isolathe') {
+            // Check resize handles first
+            if (selectedIsolathe) {
+                const handleId = hitTestHandle(mx, my);
+                if (handleId) {
+                    resizing = {
+                        elem: selectedIsolathe,
+                        handle: handleId,
+                        startX: mx, startY: my,
+                        origX: selectedIsolathe.x, origY: selectedIsolathe.y,
+                        origW: selectedIsolathe.width || DEFAULT_RUIN_SIZE,
+                        origH: selectedIsolathe.height || DEFAULT_RUIN_SIZE
+                    };
+                    closeIsolatheConfig();
+                    return;
+                }
+            }
+            const hitL = hitTestIsolathe(mx, my);
             if (hitL) {
-                if (hitL === selectedLathe) {
-                    draggingLathe = {
-                        lathe: hitL,
+                if (hitL === selectedIsolathe) {
+                    draggingIsolathe = {
+                        isolathe: hitL,
                         startMouseX: mx, startMouseY: my,
                         startX: hitL.x, startY: hitL.y
                     };
-                    selectMouseDown = { elem: hitL, type: 'lathe', startMouseX: mx, startMouseY: my };
-                    closeLatheConfig();
+                    selectMouseDown = { elem: hitL, type: 'isolathe', startMouseX: mx, startMouseY: my };
+                    closeIsolatheConfig();
                 } else {
-                    selectLathe(hitL);
+                    selectIsolathe(hitL);
                 }
                 return;
             }
             const hitRuin = hitTestRuin(mx, my);
             if (hitRuin) {
-                convertRuinToLathe(hitRuin);
+                convertRuinToIsolathe(hitRuin);
                 return;
             }
-            if (selectedLathe) deselectLathe();
+            if (selectedIsolathe) deselectIsolathe();
             return;
         }
 
@@ -3495,79 +3603,79 @@ const IdeogramEditor = (() => {
             return;
         }
 
-        // 3.75. Hit test cyphers (behind ruins/text/shapes)
-        const hitCy = hitTestCypher(mx, my);
+        // 3.75. Hit test codices (behind ruins/text/shapes)
+        const hitCy = hitTestCodex(mx, my);
         if (hitCy) {
-            if (hitCy === selectedCypher) {
-                draggingCypher = {
-                    cypher: hitCy,
+            if (hitCy === selectedCodex) {
+                draggingCodex = {
+                    codex: hitCy,
                     startMouseX: mx, startMouseY: my,
                     startX: hitCy.x, startY: hitCy.y
                 };
-                selectMouseDown = { elem: hitCy, type: 'cypher', startMouseX: mx, startMouseY: my };
-                closeCypherConfig();
+                selectMouseDown = { elem: hitCy, type: 'codex', startMouseX: mx, startMouseY: my };
+                closeCodexConfig();
             } else {
                 if (selectedRuin) deselectRuin();
                 if (selectedText) { selectedText = null; closeTextInput(); }
                 if (selectedShape) { selectedShape = null; }
-                selectCypher(hitCy);
+                selectCodex(hitCy);
             }
             return;
         }
 
-        // 3.8. Hit test presses
-        const hitP = hitTestPress(mx, my);
+        // 3.8. Hit test isopresses
+        const hitP = hitTestIsopress(mx, my);
         if (hitP) {
-            if (hitP === selectedPress) {
-                draggingPress = {
-                    press: hitP,
+            if (hitP === selectedIsopress) {
+                draggingIsopress = {
+                    isopress: hitP,
                     startMouseX: mx, startMouseY: my,
                     startX: hitP.x, startY: hitP.y
                 };
-                selectMouseDown = { elem: hitP, type: 'press', startMouseX: mx, startMouseY: my };
-                closePressConfig();
+                selectMouseDown = { elem: hitP, type: 'isopress', startMouseX: mx, startMouseY: my };
+                closeIsopressConfig();
             } else {
                 if (selectedRuin) deselectRuin();
                 if (selectedText) { selectedText = null; closeTextInput(); }
                 if (selectedShape) { selectedShape = null; }
-                if (selectedCypher) deselectCypher();
-                if (selectedLathe) deselectLathe();
-                selectPress(hitP);
+                if (selectedCodex) deselectCodex();
+                if (selectedIsolathe) deselectIsolathe();
+                selectIsopress(hitP);
             }
             return;
         }
 
-        // 3.85. Hit test lathes
-        const hitL = hitTestLathe(mx, my);
+        // 3.85. Hit test isolathes
+        const hitL = hitTestIsolathe(mx, my);
         if (hitL) {
-            if (hitL === selectedLathe) {
-                draggingLathe = {
-                    lathe: hitL,
+            if (hitL === selectedIsolathe) {
+                draggingIsolathe = {
+                    isolathe: hitL,
                     startMouseX: mx, startMouseY: my,
                     startX: hitL.x, startY: hitL.y
                 };
-                selectMouseDown = { elem: hitL, type: 'lathe', startMouseX: mx, startMouseY: my };
-                closeLatheConfig();
+                selectMouseDown = { elem: hitL, type: 'isolathe', startMouseX: mx, startMouseY: my };
+                closeIsolatheConfig();
             } else {
                 if (selectedRuin) deselectRuin();
                 if (selectedText) { selectedText = null; closeTextInput(); }
                 if (selectedShape) { selectedShape = null; }
-                if (selectedCypher) deselectCypher();
-                if (selectedPress) deselectPress();
-                selectLathe(hitL);
+                if (selectedCodex) deselectCodex();
+                if (selectedIsopress) deselectIsopress();
+                selectIsolathe(hitL);
             }
             return;
         }
 
         // 4. Click on empty space — deselect all
         closeRotationDial();
-        closeCypherConfig();
-        closePressConfig();
-        closeLatheConfig();
+        closeCodexConfig();
+        closeIsopressConfig();
+        closeIsolatheConfig();
         if (selectedRuin) deselectRuin();
-        if (selectedCypher) deselectCypher();
-        if (selectedPress) deselectPress();
-        if (selectedLathe) deselectLathe();
+        if (selectedCodex) deselectCodex();
+        if (selectedIsopress) deselectIsopress();
+        if (selectedIsolathe) deselectIsolathe();
         if (selectedText) { selectedText = null; closeTextInput(); render(); }
         if (selectedShape) { selectedShape = null; render(); }
     }
@@ -3621,7 +3729,7 @@ const IdeogramEditor = (() => {
         }
 
         // Dev lock: block element movement but allow rotate gesture (handled below)
-        if (canvasLocked && !rotatingCypherDrag) return;
+        if (canvasLocked && !rotatingCodexDrag) return;
 
         // Shape dragging
         if (draggingShape) {
@@ -3748,7 +3856,7 @@ const IdeogramEditor = (() => {
             r.width = newW;
             r.height = newH;
             render();
-            if (isomarkPlateImage && r === selectedRuin && selectedRuin.ruinId === isomarkRuinId) {
+            if (isoplateImage && r === selectedRuin && selectedRuin.ruinId === ruinMarkId) {
                 renderIsomarkPreview();
             }
             return;
@@ -3778,24 +3886,24 @@ const IdeogramEditor = (() => {
             return;
         }
 
-        // Rotate cypher via drag gesture
-        if (rotatingCypherDrag) {
-            const rc = rotatingCypherDrag.cypher;
+        // Rotate codex via drag gesture
+        if (rotatingCodexDrag) {
+            const rc = rotatingCodexDrag.codex;
             const rcw = rc.width || DEFAULT_RUIN_SIZE;
             const rch = rc.height || DEFAULT_RUIN_SIZE;
             const rccx = rc.x + rcw / 2;
             const rccy = rc.y + rch / 2;
             const curAngle = Math.atan2(my - rccy, mx - rccx);
-            let delta = curAngle - rotatingCypherDrag.lastAngle;
+            let delta = curAngle - rotatingCodexDrag.lastAngle;
             if (delta > Math.PI) delta -= 2 * Math.PI;
             if (delta < -Math.PI) delta += 2 * Math.PI;
-            rotatingCypherDrag.lastAngle = curAngle;
+            rotatingCodexDrag.lastAngle = curAngle;
 
             if (rc.isSpindial) {
-                // Spindial: continuously rotate the ruin at the visual top (12 o'clock) of linked cypher
+                // Spindial: continuously rotate the ruin at the visual top (12 o'clock) of linked codex
                 // Also visually rotate the spindial itself
-                rotatingCypherDrag.spindialAngle = (rotatingCypherDrag.spindialAngle || 0) + delta;
-                const linked = cyphers.find(lc => lc.id === rc.linkedCypherId);
+                rotatingCodexDrag.spindialAngle = (rotatingCodexDrag.spindialAngle || 0) + delta;
+                const linked = codices.find(lc => lc.id === rc.linkedCodexId);
                 if (linked && linked.slots && linked.slots.length > 0) {
                     const _rc = linked.ruinCount || 5;
                     const _step = 360 / _rc;
@@ -3815,12 +3923,12 @@ const IdeogramEditor = (() => {
                 }
             } else {
                 // Disc: accumulate visual offset, shift slots on threshold
-                rotatingCypherDrag.accumulated += delta;
-                rotatingCypherDrag.totalAngle = (rotatingCypherDrag.totalAngle || 0) + delta;
+                rotatingCodexDrag.accumulated += delta;
+                rotatingCodexDrag.totalAngle = (rotatingCodexDrag.totalAngle || 0) + delta;
                 const stepSize = (2 * Math.PI) / (rc.ruinCount || 5);
                 const hasLockedPos = rc.slots && rc.slots.some(s => s.lockPosition || s.pinPosition);
-                while (rotatingCypherDrag.accumulated >= stepSize) {
-                    rotatingCypherDrag.accumulated -= stepSize;
+                while (rotatingCodexDrag.accumulated >= stepSize) {
+                    rotatingCodexDrag.accumulated -= stepSize;
                     if (rc.slots && rc.slots.length > 1) {
                         if (hasLockedPos) {
                             // Cycle only unlocked slots CW
@@ -3877,8 +3985,8 @@ const IdeogramEditor = (() => {
                         rebuildSlotImageCache(rc);
                     }
                 }
-                while (rotatingCypherDrag.accumulated <= -stepSize) {
-                    rotatingCypherDrag.accumulated += stepSize;
+                while (rotatingCodexDrag.accumulated <= -stepSize) {
+                    rotatingCodexDrag.accumulated += stepSize;
                     if (rc.slots && rc.slots.length > 1) {
                         if (hasLockedPos) {
                             // Cycle only unlocked slots CCW
@@ -3940,26 +4048,26 @@ const IdeogramEditor = (() => {
             return;
         }
 
-        // Drag cypher
-        if (draggingCypher) {
-            draggingCypher.cypher.x = snapToGrid(draggingCypher.startX + (mx - draggingCypher.startMouseX));
-            draggingCypher.cypher.y = snapToGrid(draggingCypher.startY + (my - draggingCypher.startMouseY));
+        // Drag codex
+        if (draggingCodex) {
+            draggingCodex.codex.x = snapToGrid(draggingCodex.startX + (mx - draggingCodex.startMouseX));
+            draggingCodex.codex.y = snapToGrid(draggingCodex.startY + (my - draggingCodex.startMouseY));
             render();
             return;
         }
 
-        // Drag press
-        if (draggingPress) {
-            draggingPress.press.x = snapToGrid(draggingPress.startX + (mx - draggingPress.startMouseX));
-            draggingPress.press.y = snapToGrid(draggingPress.startY + (my - draggingPress.startMouseY));
+        // Drag isopress
+        if (draggingIsopress) {
+            draggingIsopress.isopress.x = snapToGrid(draggingIsopress.startX + (mx - draggingIsopress.startMouseX));
+            draggingIsopress.isopress.y = snapToGrid(draggingIsopress.startY + (my - draggingIsopress.startMouseY));
             render();
             return;
         }
 
-        // Drag lathe
-        if (draggingLathe) {
-            draggingLathe.lathe.x = snapToGrid(draggingLathe.startX + (mx - draggingLathe.startMouseX));
-            draggingLathe.lathe.y = snapToGrid(draggingLathe.startY + (my - draggingLathe.startMouseY));
+        // Drag isolathe
+        if (draggingIsolathe) {
+            draggingIsolathe.isolathe.x = snapToGrid(draggingIsolathe.startX + (mx - draggingIsolathe.startMouseX));
+            draggingIsolathe.isolathe.y = snapToGrid(draggingIsolathe.startY + (my - draggingIsolathe.startMouseY));
             render();
             return;
         }
@@ -4097,7 +4205,7 @@ const IdeogramEditor = (() => {
             if (wasElem.type === 'line') updateLineFromBBox(wasElem);
             else if (wasElem.type === 'circle') updateCircleFromBBox(wasElem);
             render();
-            if (isomarkPlateImage && wasElem === selectedRuin && selectedRuin && selectedRuin.ruinId === isomarkRuinId) {
+            if (isoplateImage && wasElem === selectedRuin && selectedRuin && selectedRuin.ruinId === ruinMarkId) {
                 renderIsomarkPreview();
             }
             return;
@@ -4123,14 +4231,14 @@ const IdeogramEditor = (() => {
             return;
         }
 
-        // Finalize cypher rotate gesture — snap spindial ruin to cardinal direction
-        if (rotatingCypherDrag) {
-            const rc = rotatingCypherDrag.cypher;
+        // Finalize codex rotate gesture — snap spindial ruin to cardinal direction
+        if (rotatingCodexDrag) {
+            const rc = rotatingCodexDrag.codex;
             const wasClick = selectMouseDown && Math.abs(mx - selectMouseDown.startMouseX) < 3 && Math.abs(my - selectMouseDown.startMouseY) < 3;
             // Spindial: smooth snap linked ruin(s) and spindial visual rotation to nearest 90°
             if (rc.isSpindial) {
-                const linked = cyphers.find(lc => lc.id === rc.linkedCypherId);
-                const spindialAngleDeg = (rotatingCypherDrag.spindialAngle || 0) * 180 / Math.PI;
+                const linked = codices.find(lc => lc.id === rc.linkedCodexId);
+                const spindialAngleDeg = (rotatingCodexDrag.spindialAngle || 0) * 180 / Math.PI;
                 const fromRot = (rc.rotation || 0) + spindialAngleDeg;
                 const snapped = Math.round(((fromRot % 360 + 360) % 360) / 90) * 90 % 360;
                 let delta = snapped - fromRot;
@@ -4165,31 +4273,31 @@ const IdeogramEditor = (() => {
                     }
                 }
                 if (Math.abs(delta) > 0.1 || ruinAnims.some(r => Math.abs(r.delta) > 0.1)) {
-                    cypherSnapAnim = {
-                        cypher: rc, fromRot: fromRot, toRot: snapped, delta: delta,
+                    codexSnapAnim = {
+                        codex: rc, fromRot: fromRot, toRot: snapped, delta: delta,
                         fromAccum: 0, ruinAnims: ruinAnims,
                         start: performance.now(), duration: 180
                     };
-                    rotatingCypherDrag = null;
+                    rotatingCodexDrag = null;
                     selectMouseDown = null;
                     (function animateSnap() {
-                        if (!cypherSnapAnim) return;
-                        const t = (performance.now() - cypherSnapAnim.start) / cypherSnapAnim.duration;
+                        if (!codexSnapAnim) return;
+                        const t = (performance.now() - codexSnapAnim.start) / codexSnapAnim.duration;
                         if (t >= 1) {
-                            cypherSnapAnim.cypher.rotation = cypherSnapAnim.toRot;
-                            cypherSnapAnim.ruinAnims.forEach(ra => { ra.slot.rotation = ra.toRot; });
-                            cypherSnapAnim = null;
+                            codexSnapAnim.codex.rotation = codexSnapAnim.toRot;
+                            codexSnapAnim.ruinAnims.forEach(ra => { ra.slot.rotation = ra.toRot; });
+                            codexSnapAnim = null;
                             render();
                             return;
                         }
                         const eased = 1 - Math.pow(1 - t, 3);
-                        cypherSnapAnim.ruinAnims.forEach(ra => {
+                        codexSnapAnim.ruinAnims.forEach(ra => {
                             ra.slot.rotation = ra.fromRot + ra.delta * eased;
                         });
                         render();
                         requestAnimationFrame(animateSnap);
                     })();
-                    if (wasClick && selectedCypher) showCypherConfig(selectedCypher);
+                    if (wasClick && selectedCodex) showCodexConfig(selectedCodex);
                     return;
                 }
                 rc.rotation = snapped;
@@ -4197,8 +4305,8 @@ const IdeogramEditor = (() => {
             } else {
                 // Snap disc to nearest step based on ruin box center position
                 const stepDeg = 360 / (rc.ruinCount || 5);
-                const totalAngleDeg = (rotatingCypherDrag.totalAngle || 0) * 180 / Math.PI;
-                const accumulatedDeg = (rotatingCypherDrag.accumulated || 0) * 180 / Math.PI;
+                const totalAngleDeg = (rotatingCodexDrag.totalAngle || 0) * 180 / Math.PI;
+                const accumulatedDeg = (rotatingCodexDrag.accumulated || 0) * 180 / Math.PI;
                 const ruinDisplacementDeg = totalAngleDeg + accumulatedDeg;
                 const baseRot = (rc.rotation || 0);
                 const totalRot = baseRot + ruinDisplacementDeg;
@@ -4210,66 +4318,66 @@ const IdeogramEditor = (() => {
                 while (delta > 180) delta -= 360;
                 while (delta < -180) delta += 360;
                 if (Math.abs(delta) > 0.1) {
-                    cypherSnapAnim = {
-                        cypher: rc,
+                    codexSnapAnim = {
+                        codex: rc,
                         fromRot: fromRot,
                         toRot: snapped,
                         delta: delta,
-                        fromAccum: rotatingCypherDrag.accumulated || 0,
+                        fromAccum: rotatingCodexDrag.accumulated || 0,
                         start: performance.now(),
                         duration: 180
                     };
-                    rotatingCypherDrag = null;
+                    rotatingCodexDrag = null;
                     selectMouseDown = null;
                     (function animateSnap() {
-                        if (!cypherSnapAnim) return;
-                        const t = (performance.now() - cypherSnapAnim.start) / cypherSnapAnim.duration;
+                        if (!codexSnapAnim) return;
+                        const t = (performance.now() - codexSnapAnim.start) / codexSnapAnim.duration;
                         if (t >= 1) {
-                            cypherSnapAnim.cypher.rotation = cypherSnapAnim.toRot;
-                            cypherSnapAnim = null;
+                            codexSnapAnim.codex.rotation = codexSnapAnim.toRot;
+                            codexSnapAnim = null;
                             render();
                             return;
                         }
                         render();
                         requestAnimationFrame(animateSnap);
                     })();
-                    if (wasClick && selectedCypher) showCypherConfig(selectedCypher);
+                    if (wasClick && selectedCodex) showCodexConfig(selectedCodex);
                     return;
                 }
                 rc.rotation = snapped;
             }
-            rotatingCypherDrag = null;
+            rotatingCodexDrag = null;
             selectMouseDown = null;
             render();
-            if (wasClick && selectedCypher) showCypherConfig(selectedCypher);
+            if (wasClick && selectedCodex) showCodexConfig(selectedCodex);
             return;
         }
 
-        // Finalize cypher drag — click vs drag
-        if (draggingCypher) {
+        // Finalize codex drag — click vs drag
+        if (draggingCodex) {
             const wasClick = selectMouseDown && Math.abs(mx - selectMouseDown.startMouseX) < 3 && Math.abs(my - selectMouseDown.startMouseY) < 3;
-            draggingCypher = null;
+            draggingCodex = null;
             selectMouseDown = null;
             render();
-            if (wasClick && selectedCypher) showCypherConfig(selectedCypher);
+            if (wasClick && selectedCodex) showCodexConfig(selectedCodex);
         }
 
-        // Finalize press drag — click vs drag
-        if (draggingPress) {
+        // Finalize isopress drag — click vs drag
+        if (draggingIsopress) {
             const wasClick = selectMouseDown && Math.abs(mx - selectMouseDown.startMouseX) < 3 && Math.abs(my - selectMouseDown.startMouseY) < 3;
-            draggingPress = null;
+            draggingIsopress = null;
             selectMouseDown = null;
             render();
-            if (wasClick && selectedPress) showPressConfig(selectedPress);
+            if (wasClick && selectedIsopress) showIsopressConfig(selectedIsopress);
         }
 
-        // Finalize lathe drag — click vs drag
-        if (draggingLathe) {
+        // Finalize isolathe drag — click vs drag
+        if (draggingIsolathe) {
             const wasClick = selectMouseDown && Math.abs(mx - selectMouseDown.startMouseX) < 3 && Math.abs(my - selectMouseDown.startMouseY) < 3;
-            draggingLathe = null;
+            draggingIsolathe = null;
             selectMouseDown = null;
             render();
-            if (wasClick && selectedLathe) showLatheConfig(selectedLathe);
+            if (wasClick && selectedIsolathe) showIsolatheConfig(selectedIsolathe);
         }
     }
 
@@ -4288,12 +4396,12 @@ const IdeogramEditor = (() => {
     // ========== SELECTION ==========
     function selectRuin(ruin) {
         selectedRuin = ruin;
-        if (selectedCypher) { selectedCypher = null; closeCypherConfig(); }
+        if (selectedCodex) { selectedCodex = null; closeCodexConfig(); }
         render();
         // Config menu (rotation dial) shown on click of already-selected ruin, not on first select
-        // Update IsoMark preview if a plate is active
-        if (isomarkPlateImage && ruin) {
-            isomarkRuinId = ruin.ruinId;
+        // Update IsoMark preview if an IsoPlate is active
+        if (isoplateImage && ruin) {
+            ruinMarkId = ruin.ruinId;
             renderIsomarkPreview();
             updateIsomarkSaveBtn();
         }
@@ -4301,7 +4409,7 @@ const IdeogramEditor = (() => {
 
     function deselectRuin() {
         selectedRuin = null;
-        isomarkRuinId = null;
+        ruinMarkId = null;
         closeRotationDial();
         closeColorPopover();
         renderIsomarkPreview();
@@ -4399,7 +4507,7 @@ const IdeogramEditor = (() => {
             clearRects: [],
             textElements: [],
             drawnShapes: [],
-            cyphers: [],
+            codices: [],
             viewport: { offsetX: 0, offsetY: 0, zoom: 1 },
             metadata: { created: Date.now(), modified: Date.now() }
         };
@@ -4408,7 +4516,7 @@ const IdeogramEditor = (() => {
         return ideogram;
     }
 
-    function deepCopyCypher(c) {
+    function deepCopyCodex(c) {
         return {
             ...c,
             slots: (c.slots || []).map(s => ({ ...s })),
@@ -4425,26 +4533,26 @@ const IdeogramEditor = (() => {
         clearRects = (ig.clearRects || []).map(c => ({ ...c }));
         textElements = (ig.textElements || []).map(t => ({ ...t }));
         drawnShapes = (ig.drawnShapes || []).map(s => ({ ...s }));
-        cyphers = (ig.cyphers || []).map(c => deepCopyCypher(c));
-        presses = (ig.presses || []).map(p => ({ ...p }));
-        lathes = (ig.lathes || []).map(l => ({ ...l }));
+        codices = (ig.codices || []).map(c => deepCopyCodex(c));
+        isopresses = (ig.isopresses || []).map(p => ({ ...p }));
+        isolathes = (ig.isolathes || []).map(l => ({ ...l }));
         viewport = { ...(ig.viewport || { offsetX: 0, offsetY: 0, zoom: 1 }) };
         selectedRuin = null;
         selectedText = null;
         selectedShape = null;
-        selectedCypher = null;
-        selectedPress = null;
-        selectedLathe = null;
-        preloadAllCypherImages();
+        selectedCodex = null;
+        selectedIsopress = null;
+        selectedIsolathe = null;
+        preloadAllCodexImages();
         preloadAllSlotImages();
-        preloadAllPressImages();
-        preloadAllLatheImages();
+        preloadAllIsopressImages();
+        preloadAllIsolatheImages();
         closeRotationDial();
         closeColorPopover();
         closeTextInput();
-        closeCypherConfig();
-        closePressConfig();
-        closeLatheConfig();
+        closeCodexConfig();
+        closeIsopressConfig();
+        closeIsolatheConfig();
         if (active) render();
         refreshSidebarList();
     }
@@ -4457,9 +4565,9 @@ const IdeogramEditor = (() => {
         ig.clearRects = clearRects.map(c => ({ ...c }));
         ig.textElements = textElements.map(t => ({ ...t }));
         ig.drawnShapes = drawnShapes.map(s => ({ ...s }));
-        ig.cyphers = cyphers.map(c => deepCopyCypher(c));
-        ig.presses = presses.map(p => ({ ...p }));
-        ig.lathes = lathes.map(l => ({ ...l }));
+        ig.codices = codices.map(c => deepCopyCodex(c));
+        ig.isopresses = isopresses.map(p => ({ ...p }));
+        ig.isolathes = isolathes.map(l => ({ ...l }));
         ig.viewport = { ...viewport };
         ig.metadata.modified = Date.now();
     }
@@ -4475,21 +4583,21 @@ const IdeogramEditor = (() => {
                 clearRects = [];
                 textElements = [];
                 drawnShapes = [];
-                cyphers = [];
-                presses = [];
-                lathes = [];
+                codices = [];
+                isopresses = [];
+                isolathes = [];
                 selectedRuin = null;
                 selectedText = null;
                 selectedShape = null;
-                selectedCypher = null;
-                selectedPress = null;
-                selectedLathe = null;
+                selectedCodex = null;
+                selectedIsopress = null;
+                selectedIsolathe = null;
                 closeRotationDial();
                 closeColorPopover();
                 closeTextInput();
-                closeCypherConfig();
-                closePressConfig();
-                closeLatheConfig();
+                closeCodexConfig();
+                closeIsopressConfig();
+                closeIsolatheConfig();
                 if (active) render();
             }
         }
@@ -4513,9 +4621,9 @@ const IdeogramEditor = (() => {
                 clearRects: (ig.clearRects || []).map(c => ({ ...c })),
                 textElements: (ig.textElements || []).map(t => ({ ...t })),
                 drawnShapes: (ig.drawnShapes || []).map(s => ({ ...s })),
-                cyphers: (ig.cyphers || []).map(c => deepCopyCypher(c)),
-                presses: (ig.presses || []).map(p => ({ ...p })),
-                lathes: (ig.lathes || []).map(l => ({ ...l })),
+                codices: (ig.codices || []).map(c => deepCopyCodex(c)),
+                isopresses: (ig.isopresses || []).map(p => ({ ...p })),
+                isolathes: (ig.isolathes || []).map(l => ({ ...l })),
                 viewport: { ...(ig.viewport || { offsetX: 0, offsetY: 0, zoom: 1 }) },
                 metadata: { ...(ig.metadata || { created: Date.now(), modified: Date.now() }) }
             }))
@@ -4531,18 +4639,33 @@ const IdeogramEditor = (() => {
             clearRects: (ig.clearRects || []).map(c => ({ ...c })),
             textElements: (ig.textElements || []).map(t => ({ ...t })),
             drawnShapes: (ig.drawnShapes || []).map(s => ({ ...s })),
-            cyphers: (ig.cyphers || []).map(c => deepCopyCypher(c)),
-            presses: (ig.presses || []).map(p => ({ ...p })),
-            lathes: (ig.lathes || []).map(l => ({ ...l })),
+            codices: (ig.codices || ig.cyphers || []).map(c => {
+                const copy = deepCopyCodex(c);
+                // Migrate old linkedCypherId → linkedCodexId
+                if (copy.linkedCypherId !== undefined && copy.linkedCodexId === undefined) {
+                    copy.linkedCodexId = copy.linkedCypherId;
+                    delete copy.linkedCypherId;
+                }
+                return copy;
+            }),
+            isopresses: (ig.isopresses || ig.presses || []).map(p => {
+                const copy = { ...p };
+                if (copy.linkedCypherId !== undefined && copy.linkedCodexId === undefined) {
+                    copy.linkedCodexId = copy.linkedCypherId;
+                    delete copy.linkedCypherId;
+                }
+                return copy;
+            }),
+            isolathes: (ig.isolathes || ig.lathes || []).map(l => ({ ...l })),
             viewport: { ...(ig.viewport || { offsetX: 0, offsetY: 0, zoom: 1 }) },
             metadata: { ...(ig.metadata || { created: Date.now(), modified: Date.now() }) }
         }));
         preloadAllRuinImages();
         // Clear stale caches and reset so switchIdeogram always runs on import
-        cypherImageCache = {};
+        codexImageCache = {};
         slotImageCache = {};
-        pressImageCache = {};
-        latheImageCache = {};
+        isopressImageCache = {};
+        isolatheImageCache = {};
         currentIdeogramId = null;
         if (ideograms.length > 0) {
             switchIdeogram(ideograms[0].id);

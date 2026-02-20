@@ -83,8 +83,8 @@ window.PARALLAX_PROJECT ={
     },
     {
       "id": "isomarked_plate_1771308671605",
-      "name": "IsoMarked Plate",
-      "image": "assets/items/isomarkedplate.png",
+      "name": "IsoMark",
+      "image": "assets/items/IsoMark.png",
       "uses": 1
     },
     {
@@ -347,7 +347,7 @@ window.PARALLAX_PROJECT ={
         "y": 280,
         "width": 40,
         "height": 40,
-        "label": "IsoMarked Plate (Cryo)",
+        "label": "IsoMark (Cryo)",
         "color": "#ff6b35",
         "itemId": "isomarked_plate_1771308671605"
       },
@@ -358,7 +358,7 @@ window.PARALLAX_PROJECT ={
         "y": 840,
         "width": 40,
         "height": 40,
-        "label": "IsoMarked Plate",
+        "label": "IsoMark",
         "color": "#ff6b35",
         "itemId": "isomarked_plate_1771308671605"
       },
@@ -369,7 +369,7 @@ window.PARALLAX_PROJECT ={
         "y": 880,
         "width": 40,
         "height": 40,
-        "label": "IsoMarked Plate",
+        "label": "IsoMark",
         "color": "#ff6b35",
         "itemId": "isomarked_plate_1771308671605"
       },
@@ -380,7 +380,7 @@ window.PARALLAX_PROJECT ={
         "y": 880,
         "width": 40,
         "height": 40,
-        "label": "IsoMarked Plate",
+        "label": "IsoMark",
         "color": "#ff6b35",
         "itemId": "isomarked_plate_1771308671605"
       },
@@ -391,7 +391,7 @@ window.PARALLAX_PROJECT ={
         "y": 320,
         "width": 40,
         "height": 40,
-        "label": "IsoMarked Plate (navigation)",
+        "label": "IsoMark (navigation)",
         "color": "#ff6b35",
         "itemId": "isomarked_plate_1771308671605"
       },
@@ -426,7 +426,7 @@ window.PARALLAX_PROJECT ={
         "height": 120,
         "label": "Lockers",
         "color": "#cccccc",
-        "description": "There are 3 lockers, one for each cryo pod. To open your cryopod you need your spin dial. Your locker contains an IsoMarked Ruin (also a plate)",
+        "description": "There are 3 lockers, one for each cryo pod. To open your cryopod you need your spin dial. Your locker contains a ruinMark",
         "puzzleId": "puzzle_1771308404837",
         "sceneId": null
       },
@@ -437,7 +437,7 @@ window.PARALLAX_PROJECT ={
         "y": 560,
         "width": 40,
         "height": 40,
-        "label": "IsoMarked SpinDial ID Plate",
+        "label": "IsoMark SpinDial ID",
         "color": "#ff6b35",
         "itemId": "isomarked_plate_1771308671605"
       },
@@ -508,7 +508,7 @@ window.PARALLAX_PROJECT ={
         "y": 360,
         "width": 40,
         "height": 80,
-        "label": "IsoMark Plate Press",
+        "label": "Isopress",
         "color": "#999999",
         "assetId": null,
         "puzzleId": null
@@ -520,7 +520,7 @@ window.PARALLAX_PROJECT ={
         "y": 440,
         "width": 40,
         "height": 40,
-        "label": "IsoMarked Plate (System level - Generator)",
+        "label": "IsoMark (System level - Generator)",
         "color": "#ff6b35",
         "itemId": "isomarked_plate_1771308671605"
       }
@@ -565,17 +565,17 @@ window.PARALLAX_PROJECT ={
       {
         "id": "ruin_1771493848782_v7fv",
         "name": "Map puzzle",
-        "image": "assets/puzzles/Map_puzzle.png"
+        "image": "assets/puzzles/Codex.png"
       },
       {
         "id": "ruin_1771496858096_ou8f",
         "name": "Map puzzle spindial",
-        "image": "assets/puzzles/Map_puzzle_spindial.png"
+        "image": "assets/puzzles/spindial.png"
       },
       {
         "id": "ruin_1771496858098_qklu",
         "name": "Map puzzle",
-        "image": "assets/puzzles/Map_puzzle.png"
+        "image": "assets/puzzles/Codex.png"
       },
       {
         "id": "ruin_1771503273644_40o9",
@@ -584,14 +584,14 @@ window.PARALLAX_PROJECT ={
       },
       {
         "id": "ruin_1771572615384_cd2g",
-        "name": "IsoMarkRuin",
-        "image": "assets/puzzles/IsoMarkRuin.png"
+        "name": "ruinMark",
+        "image": "assets/puzzles/ruin_Mark.png"
       }
     ],
     "ideograms": [
       {
         "id": "ideogram_1771503169529_zl52",
-        "name": "Cypher",
+        "name": "Codex",
         "placedRuins": [
           {
             "id": "placed_1771503280214_j2or",
@@ -610,10 +610,10 @@ window.PARALLAX_PROJECT ={
         "clearRects": [],
         "textElements": [],
         "drawnShapes": [],
-        "cyphers": [
+        "codices": [
           {
             "id": "cypher_1771503216753_x3oj",
-            "image": "assets/puzzles/Map_puzzle.png",
+            "image": "assets/puzzles/Codex.png",
             "x": 1042.818181818182,
             "y": 245.9999999999999,
             "width": 920,
@@ -724,7 +724,7 @@ window.PARALLAX_PROJECT ={
           },
           {
             "id": "cypher_1771503218365_8j5h",
-            "image": "assets/puzzles/Map_puzzle_spindial.png",
+            "image": "assets/puzzles/spindial.png",
             "x": 1299.6666666666665,
             "y": 466.66666666666697,
             "width": 404.5242070116861,
@@ -757,7 +757,7 @@ window.PARALLAX_PROJECT ={
             ],
             "solvedSlots": null,
             "isSpindial": true,
-            "linkedCypherId": "cypher_1771503216753_x3oj"
+            "linkedCodexId": "cypher_1771503216753_x3oj"
           }
         ],
         "viewport": {
@@ -770,19 +770,19 @@ window.PARALLAX_PROJECT ={
           "modified": 1771572644114
         },
         "thumbnail": "assets/puzzles/cryoideogram.png",
-        "presses": [
+        "isopresses": [
           {
             "id": "press_1771572622070_id4n",
-            "image": "assets/puzzles/IsoMarkRuin.png",
+            "image": "assets/puzzles/ruin_Mark.png",
             "x": -212.33333333333337,
             "y": 864,
             "width": 758,
             "height": 838,
-            "name": "IsoMarkRuin",
-            "linkedCypherId": "cypher_1771503216753_x3oj"
+            "name": "ruinMark",
+            "linkedCodexId": "cypher_1771503216753_x3oj"
           }
         ],
-        "lathes": []
+        "isolathes": []
       }
     ]
   }

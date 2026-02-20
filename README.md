@@ -65,7 +65,7 @@ Parallax is a browser-based point-and-click puzzle game editor and engine built 
 ├── docs/                       # Documentation
 │   ├── scenes-hotspots.md      # Scenes, scene assets, hotspots, connections, action system
 │   ├── inventory-puzzles.md    # Inventory, puzzles, puzzle asset types
-│   ├── ideogram-editor.md      # Ideogram editor, cypher tool
+│   ├── ideogram-editor.md      # Ideogram editor, codex tool
 │   ├── gamestate-image.md      # Game state, blueprint editor, image editor
 │   └── development.md          # Architecture, play mode, save/load, deployment, TODO, build log, roadmap
 └── README.md
@@ -75,7 +75,7 @@ Parallax is a browser-based point-and-click puzzle game editor and engine built 
 
 - **[Scenes & Hotspots](docs/scenes-hotspots.md)** — scene management with states, scene assets with per-state positioning/visibility/layering, polygon hotspot drawing with popover config, hotspot connections, and the unified action system
 - **[Inventory & Puzzles](docs/inventory-puzzles.md)** — item management with use counts, puzzle overlays with interactive asset placement and grouping, puzzle hotspots, multi-state puzzles, and puzzle asset types (combo lock, console terminal)
-- **[Ideogram Editor](docs/ideogram-editor.md)** — ruin-based puzzle editor with asset codex, radial wheel placement, rotation/resize/color tools, ideogram drawing (lines, circles), cut tool (rectangle and polygon), text tool, IsoMark compositor, zoom, and the cypher tool (disc/spindial rotation puzzles with drag-to-rotate, dev lock, 3-tier coupling system, pin position with gate effects, and per-slot lock controls)
+- **[Ideogram Editor](docs/ideogram-editor.md)** — ruin-based puzzle editor with asset codex, radial wheel placement, rotation/resize/color tools, ideogram drawing (lines, circles), cut tool (rectangle and polygon), text tool, IsoMark compositor, zoom, and the codex tool (disc/spindial rotation puzzles with drag-to-rotate, dev lock, 3-tier coupling system, pin position with gate effects, and per-slot lock controls)
 - **[Game State & Image](docs/gamestate-image.md)** — flags, progression hints, level overview, blueprint spatial planning editor with 6 placement tools, and image editor with 16:9 crop
 
 ## Play Mode

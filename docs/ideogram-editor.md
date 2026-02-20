@@ -53,12 +53,12 @@ A standalone ruin-based puzzle editor for creating alien symbol layouts. Accesse
   - Content-aware: scrollbar range expands to cover all placed elements (ruins, text, shapes) plus padding
   - Styled to match the editor's dark theme (rust/orange hover accents)
 - **Grid toggle** — "Show Grid" checkbox in tools panel; when ON, resize/move/cut/text snap to the 40px grid; when OFF (default), everything is free-form; Add Ruin never snaps
-- **IsoMark compositor** — panel-based tool for compositing ruins onto a static plate background image:
-  - Upload a plate image via the "Set Plate" button (persists as the background for all composites)
-  - Click any placed ruin on the canvas to overlay it centered on the plate in a live preview
-  - Ruin appears at proportional size relative to the plate — resize the ruin on canvas to adjust its size on the plate
+- **IsoMark compositor** — panel-based tool for compositing a ruinMark onto an IsoPlate to produce an IsoMark image:
+  - Upload an IsoPlate image via the "Set IsoPlate" button (persists as the background for all composites)
+  - Click any placed ruin on the canvas to overlay it centered on the IsoPlate in a live preview
+  - Ruin appears at proportional size relative to the IsoPlate — resize the ruin on canvas to adjust its size
   - All ruin effects are preserved in the composite (color, rotation, mirror, opacity)
-  - "Save Plate" exports the flattened composite as a PNG and adds it to the Asset Codex
+  - "Save IsoMark" exports the flattened composite as a PNG and adds it to the Asset Codex
   - Requires a local HTTP server for PNG export (`python3 -m http.server`)
 - **Right-click deselect** — right-clicking anywhere on the ideogram canvas deselects the active tool and returns to select mode
 - **Tool locking** — when a tool (Color, Cut, Text, Ideogram) is active, the rotation dial is suppressed; switching tools or clicking the active tool again cleans up all tool-specific UI
@@ -66,24 +66,24 @@ A standalone ruin-based puzzle editor for creating alien symbol layouts. Accesse
 - **Multiple ideograms** — create separate ideogram layouts, each with its own placed ruins, text, drawn shapes, cut areas, and viewport position/zoom
 - **Data persistence** — all ideogram data (ruin library, placed ruins with color/size/rotation, text elements, drawn shapes, cut rects, viewport with zoom) is included in project save/load/export
 
-## Cypher Tool
+## Codex Tool
 
 Disc-based rotation puzzle with ruin slot boxes arranged around an ellipse:
 
-- **Disc cypher** — circular dial with configurable slot count (default 5); slot boxes positioned on an ellipse with angular skew so boxes face outward; assign ruin images to slots via file picker (click a slot box on canvas or use the config panel grid)
-- **Spindial variant** — elliptical overlay element linked to a disc cypher; no slot boxes of its own; rotating the spindial rotates the linked cypher's first slot ruin independently
+- **Disc codex** — circular dial with configurable slot count (default 5); slot boxes positioned on an ellipse with angular skew so boxes face outward; assign ruin images to slots via file picker (click a slot box on canvas or use the config panel grid)
+- **Spindial variant** — elliptical overlay element linked to a disc codex; no slot boxes of its own; rotating the spindial rotates the linked codex's first slot ruin independently
 - **Ellipse hit testing** — spindials use `(dx/rx)² + (dy/ry)² ≤ 1` for precise elliptical click detection; clicks outside the ellipse pass through to elements underneath
-- **Drag-to-rotate** — click-hold on a cypher or spindial and drag the mouse around its center to rotate; disc cyphers shift slots in discrete steps, spindials rotate continuously with smooth visual feedback via `dragOffset`
+- **Drag-to-rotate** — click-hold on a codex or spindial and drag the mouse around its center to rotate; disc codices shift slots in discrete steps, spindials rotate continuously with smooth visual feedback via `dragOffset`
 - **Cardinal direction snapping** — spindial ruin rotation snaps to the nearest cardinal direction (0°, 90°, 180°, 270°) on mouse release; smooth drag during interaction, locked positions on commit
-- **Dev lock mode** — "Dev" checkbox in tools panel freezes the entire canvas (no panning, no element movement, no tool actions); only drag-to-rotate gestures work, on any cypher without needing to select it first
+- **Dev lock mode** — "Dev" checkbox in tools panel freezes the entire canvas (no panning, no element movement, no tool actions); only drag-to-rotate gestures work, on any codex without needing to select it first
 - **Ruin scale slider** — uniform scale control in the config panel; adjusts the display size of all ruin images within slot boxes
 - **Solve lock** — save the current slot arrangement as the solved state; clear to reset; used by the puzzle system to check if the player has arranged the disc correctly
-- **Config panel** — unified config for both disc cyphers and spindials: slot grid with ruin thumbnails and per-slot lock controls, ruin scale slider, solve lock save/clear, slot count, coupling checkboxes, and linked cypher dropdown (when spindial is checked)
+- **Config panel** — unified config for both disc codices and spindials: slot grid with ruin thumbnails and per-slot lock controls, ruin scale slider, solve lock save/clear, slot count, coupling checkboxes, and linked codex dropdown (when spindial is checked)
 - **File path persistence** — slot ruin images and ideogram thumbnails are stored as relative file paths (`assets/puzzles/filename.png`) instead of data URLs, ensuring they survive the `stripDataUrls` export filter
 
 ### Coupling System
 
-The cypher puzzle supports coupling mechanics that create interdependency between disc rotation and ruin orientation, configured via checkboxes in the Ideogram Type section of the config panel. Each tier adds complexity on top of the previous one:
+The codex puzzle supports coupling mechanics that create interdependency between disc rotation and ruin orientation, configured via checkboxes in the Ideogram Type section of the config panel. Each tier adds complexity on top of the previous one:
 
 #### Difficulty Tiers
 
@@ -120,7 +120,7 @@ Invalid or meaningless combinations are automatically greyed out in the config:
 - O buttons require Disc-Orientation to be enabled
 - Gate Rotate and Gate Flip require a pinned ruin
 - Pin and P on slot 0 are disabled when a spindial is linked (slot 0 is the spindial target)
-- The entire Ideogram Type section is greyed on spindial configs (coupling belongs to the disc cypher)
+- The entire Ideogram Type section is greyed on spindial configs (coupling belongs to the disc codex)
 
 #### Smooth Animation
 

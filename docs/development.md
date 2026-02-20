@@ -79,14 +79,14 @@ The spindial is the player's primary tool throughout the game — it's issued at
 **Spindial interactions:**
 - Unlocks doors
 - Interacts with terminals
-- Loads ruin plates (cards) found throughout the ship
-- Each ruin plate is a piece of the ship map
+- Loads ruinMarks (cards) found throughout the ship
+- Each ruinMark is a piece of the ship map
 
 **Puzzle flow:**
-1. Player finds ruin plates during exploration (navigation, weapons, shield, engine, etc.)
-2. Load a plate into the spindial via a terminal
-3. Use the spindial on the cypher display (found in cryo operations, beside a terminal showing the cryo plate readout with all symbols)
-4. The cypher displays only the ruins the player has collected — empty slots are visible so the player knows how many remain
+1. Player finds ruinMarks during exploration (navigation, weapons, shield, engine, etc.)
+2. Load a ruinMark into the spindial via a terminal
+3. Use the spindial on the codex (found in cryo operations, beside a terminal showing the cryo plate readout with all symbols)
+4. The codex displays only the ruins the player has collected — empty slots are visible so the player knows how many remain
 5. All positions are available to cycle through regardless of how many ruins are loaded
 6. Player arranges the collected ruins into correct positions and orientations to form the ideogram
 7. The completed ideogram IS the full map of the ship structure
@@ -97,19 +97,28 @@ The spindial is the player's primary tool throughout the game — it's issued at
 - Acts as the player's compass — compare any ruin's orientation against cryo to gauge its state
 
 **Symbol readout:**
-- The terminal beside the cypher shows the cryo plate with its symbol alongside the other symbols
+- The terminal beside the codex shows the cryo plate with its symbol alongside the other symbols
 - Symbols can be used together, so the readout looks complex
 - But a player who's been paying attention to environmental cryo symbolism will recognize the correct orientation
 
 ## Puzzle Design — Forge Machine
 
-The forge machine is a self-contained workstation the player interacts with to create and manage ruin plates. It contains three components in one machine:
+The forge machine is a self-contained workstation the player interacts with to create and manage plates. It contains three components in one machine:
 
-- **IsoPress** — stamps a ruin onto a blank plate to create an isomarked plate (the plate press). Editor tool built: place asset, link to disc cypher, shows ruin at visual top (12 o'clock) with rotation/mirror transforms. Puzzle scene registration still needed.
-- **Lathe** — clears/resets an isomarked plate back to blank. Editor tool exists as placeable asset; dev-mode clear behavior deferred for future expansion.
+- **Isopress** — presses a ruinMark and an IsoPlate together to create an IsoMark. Editor tool built: place asset, link to codex, shows ruin at visual top (12 o'clock) with rotation/mirror transforms. Puzzle scene registration still needed.
+- **Isolathe** — separates an IsoMark back into its component plates (ruinMark + IsoPlate). Editor tool exists as placeable asset; dev-mode clear behavior deferred for future expansion.
 - **Screen** — a display with a slot for the player's spindial, allowing them to cycle through ruins and view their collection
 
-The player loads their spindial into the screen slot to browse collected ruins, uses the lathe to clear plates, and the isopress to forge new ones. The machine is a central hub for plate management alongside the cypher display used for solving.
+### Plate Types & Process
+
+| Asset | Description |
+|-------|-------------|
+| **blank_Mark** | Blank rectangular base plate (unpressed plate) |
+| **ruinMark** | A blank_Mark with a ruin loaded onto it — created at another station, or found during exploration |
+| **IsoPlate** | Hex gold plate |
+| **IsoMark** | Finished product — a ruinMark and IsoPlate pressed together via the Isopress |
+
+Blank plates (blank_Marks) can be found throughout the ship. The player combines a blank_Mark with a ruin at a separate station to create a ruinMark. Alternatively, completed ruinMarks can be found directly during exploration. To create an IsoMark, the player brings a ruinMark and an IsoPlate to the forge machine and uses the Isopress to press them together. The Isolathe reverses this — it separates an IsoMark back into a ruinMark and an IsoPlate.
 
 ## Known Issues
 - **Allow Delete checkboxes share state** — all Allow Delete toggles (Scenes, Inventory, Puzzles, Ideograms) control the same `delete-enabled` class on the panel body. Checking one enables delete buttons across all sections. Works in practice since only one section is visible at a time, but the puzzle/ideogram views share a panel — checking Allow Delete in one persists when toggling to the other.
@@ -121,8 +130,8 @@ The goal is to build **4–5 stories** using the Parallax engine, resulting in a
 
 The engine is feature-complete for game creation — the current focus is building the puzzle systems:
 
-- **Ruin Codex** — the primary puzzle type, built using the ideogram editor. The ruin codex is designed to be a recurring puzzle mechanic reused across all stories. The cypher tool (disc + spindial) is complete; remaining components are the IsoMark workspace, plate press, plate lathe, and codex display.
-- **IsoPlate Press** — a smaller puzzle type, mostly built via the IsoMark compositor. Needs puzzle scene registration and asset type wiring.
+- **Ruin Codex** — the primary puzzle type, built using the ideogram editor. The ruin codex is designed to be a recurring puzzle mechanic reused across all stories. The codex tool (disc + spindial) is complete; remaining components are the IsoMark workspace, isopress, isolathe, and codex display.
+- **Isopress** — a smaller puzzle type, mostly built via the IsoMark compositor. Needs puzzle scene registration and asset type wiring.
 - **Third puzzle type** — TBD, one more smaller puzzle to round out the set.
 
 All inventory items and puzzle assets are lined up for the current puzzle set.
@@ -135,15 +144,15 @@ All inventory items and puzzle assets are lined up for the current puzzle set.
 - [ ] Sound effects: console puzzle — keyboard typing sounds, error beep, success chime for the terminal asset
 - [ ] **Ideogram Puzzle System** — the map puzzle is now the **Ideogram Puzzle**, built using the ideogram editor. Two workspace modes accessed via ideogram cards:
   - **Blank workspace** (current) — freeform canvas for building ideogram geometry, placing ruins, cutting, compositing, and general design work
-  - [ ] **IsoMark Workspace** — a pre-organized workspace with designated areas for each puzzle component; selecting a card opens this structured layout where the puzzle components live together. The workflow: build an ideogram → cut ruins out of it → stamp ruin plates on the press → clear plates on the lathe → reference the codex → use the spindial to cycle/flip/rotate ruins into position
+  - [ ] **IsoMark Workspace** — a pre-organized workspace with designated areas for each puzzle component; selecting a card opens this structured layout where the puzzle components live together. The workflow: build an ideogram → cut ruins out of it → press ruinMarks with IsoPlates on the isopress to create IsoMarks → separate IsoMarks on the isolathe → reference the codex → use the spindial to cycle/flip/rotate ruins into position
   - Puzzle components (registered as puzzle asset types, similar to combo lock):
-    - [~] **IsoMark Plate Press** — editor tool built (place asset, link to disc cypher, shows ruin at visual 12 o'clock with rotation/mirror transforms via stable imageCache lookup); still needs puzzle scene and asset type registration
-    - [~] **IsoMark Plate Lathe** — editor tool exists as placeable asset; dev-mode clear behavior deferred; still needs puzzle scene and asset type registration
-    - [x] **Spindial Mechanism** — built as the Cypher tool: disc cypher with slot boxes for cycling ruins, spindial overlay for rotating the linked ruin, drag-to-rotate gesture, cardinal direction snapping, dev lock mode, solve lock, 3-tier coupling system (disc-orientation, linked spindial, mirror) with per-slot lock controls and smooth coupling animation
+    - [~] **Isopress** — editor tool built (place asset, link to codex, shows ruin at visual 12 o'clock with rotation/mirror transforms via stable imageCache lookup); still needs puzzle scene and asset type registration
+    - [~] **Isolathe** — editor tool exists as placeable asset; dev-mode clear behavior deferred; still needs puzzle scene and asset type registration
+    - [x] **Spindial Mechanism** — built as the Codex tool: disc codex with slot boxes for cycling ruins, spindial overlay for rotating the linked ruin, drag-to-rotate gesture, cardinal direction snapping, dev lock mode, solve lock, 3-tier coupling system (disc-orientation, linked spindial, mirror) with per-slot lock controls and smooth coupling animation
     - [ ] **Codex Display** — displays the ideogram geometry for the player to reference while working
-  - Plate images already exist as assets; press and lathe just need puzzle scenes and registration as puzzle parts
+  - Plate assets (blank_Mark, ruinMark, IsoPlate, IsoMark) already exist; isopress and isolathe just need puzzle scenes and registration as puzzle parts
 - [ ] **Rename ideogram tools** — current tool names in the ideogram section are confusing; needs a clarity pass to make tool purposes more obvious
-- [ ] **Two-finger scroll rotation** — hover over a cypher/spindial in dev lock mode and use two-finger trackpad scroll to rotate it (alternative to click-drag-rotate); uses the existing `wheel` event
+- [ ] **Two-finger scroll rotation** — hover over a codex/spindial in dev lock mode and use two-finger trackpad scroll to rotate it (alternative to click-drag-rotate); uses the existing `wheel` event
 
 ## Build Log
 - **Session 1:** 2:00 AM – 5:00 AM, Feb 11 — Core engine (scenes, hotspots, inventory, puzzles, play mode, game state)
@@ -154,7 +163,7 @@ All inventory items and puzzle assets are lined up for the current puzzle set.
 - **Session 6:** Feb 13–14, ~14 hours — Scene assets system (per-state positioning, visibility, layering, flip H/V, fade transitions), hotspot connections, move asset with pick mode, asset show/hide actions, clear after click and clear group (sibling hotspot clearing), solve puzzle action type, image editor with 16:9 crop tool, dialogue timing overhaul (configurable duration, immediate replacement), play mode UI overhaul (hidden toolbar, floating overlay buttons, right-click radial inventory wheel with puzzle overlay support), canvas ResizeObserver
 - **Session 7:** Feb 16, ~7 hours — Blueprint spatial editor (grid canvas, 6 placement tools with tool toggle behavior, spatial detection, scene inheritance, smart config popover positioning, categorized list view, item drag-to-reposition, panel integration), puzzle component prototyping
 - **Session 8:** Feb 17–18, ~13 hours — Ideogram editor (ruin library with multi-file select, radial wheel placement at natural image size, rotation dial with mirror/delete, free-form resize with 8 handles and aspect ratio lock, color tool with 5 modes and popover, two-phase cut tool with move/cut context menu and offscreen capture, text tool with inline editor and word-wrap, save ruin as PNG with File System Access API, zoom slider with ctx.scale transform, custom dark-themed scrollbars with content-aware panning and mouse wheel support, grid toggle controlling snap behavior, tool locking, movable text elements, ideogram cards with CRUD, data persistence in save/load/export, puzzle panel view swapping, IsoMark preview fix, Create Ideogram tool with Line and Circle sub-tools (angle-constrained lines, ring circles, shape selection/drag/resize/delete, color/thickness popover, Save Ideogram as PNG), polygon cut tool (N-point polygon selection with grid snap, canvas clipping for non-rectangular cuts), removed Ruin Box tool)
-- **Session 9:** Feb 18–19, ~8 hours — Cypher puzzle tool (disc cypher with ellipse-positioned slot boxes and angular skew, spindial variant with linked rotation, ruin assignment via file picker, ruin scale slider, solve lock save/clear, config panel with slot grid), drag-to-rotate gesture (angular delta tracking with discrete slot shifting for discs and continuous rotation for spindials, dragOffset for smooth visual feedback), cardinal direction snapping for spindial rotation on release, Dev lock mode (canvas freeze checkbox, rotation-only interaction without selection), save persistence fix (file path storage pattern replacing dataURLs to survive stripDataUrls export filter, loadIdeogramData cache clearing and switchIdeogram fix), ellipse hit testing for spindials, dead code cleanup (removed animation function and rotate button handlers)
-- **Session 10:** Feb 19, ~6 hours — Cypher coupling system (disc-orientation coupling rotates all unlocked ruins 90° on disc shift, linked spindial coupling rotates opposite ruin, mirror coupling flips unlocked ruins on disc shift), 3-tier difficulty (basic/medium/hard), per-slot lock controls (P locks slot content, O exempts from coupling, Pin fixes ruin to screen position), pin position with gate effects (gate rotate +90° and gate flip on ruin passing pinned position), smart greying logic (invalid combos auto-disabled), difficulty legend in config panel, smooth orientDragOffset animation for coupling during drag, unified cypher/spindial config panel, documentation restructure (README split into docs/ folder with 5 linked pages)
-- **Session 11:** Feb 20, ~5 hours (continuing) — Press overlay system (stable imageCache lookup via ruinLibrary matching instead of broken slotImageCache, visual top slot calculation using disc rotation for 12 o'clock position, rotation/mirror transform display on press), spindial topIndex fix (mousemove and snap target the visual 12 o'clock slot instead of hardcoded slots[0]), Press and Lathe editor tools (place asset, convert, boundary box, config panel, save/load), cleanup (removed pressRuinCache, updateLinkedPresses, currentOverlay, reverted rebuildSlotImageCache to simple version)
-- **Total build time:** ~75 hours (so far)
+- **Session 9:** Feb 18–19, ~8 hours — Codex puzzle tool (disc codex with ellipse-positioned slot boxes and angular skew, spindial variant with linked rotation, ruin assignment via file picker, ruin scale slider, solve lock save/clear, config panel with slot grid), drag-to-rotate gesture (angular delta tracking with discrete slot shifting for discs and continuous rotation for spindials, dragOffset for smooth visual feedback), cardinal direction snapping for spindial rotation on release, Dev lock mode (canvas freeze checkbox, rotation-only interaction without selection), save persistence fix (file path storage pattern replacing dataURLs to survive stripDataUrls export filter, loadIdeogramData cache clearing and switchIdeogram fix), ellipse hit testing for spindials, dead code cleanup (removed animation function and rotate button handlers)
+- **Session 10:** Feb 19, ~6 hours — Codex coupling system (disc-orientation coupling rotates all unlocked ruins 90° on disc shift, linked spindial coupling rotates opposite ruin, mirror coupling flips unlocked ruins on disc shift), 3-tier difficulty (basic/medium/hard), per-slot lock controls (P locks slot content, O exempts from coupling, Pin fixes ruin to screen position), pin position with gate effects (gate rotate +90° and gate flip on ruin passing pinned position), smart greying logic (invalid combos auto-disabled), difficulty legend in config panel, smooth orientDragOffset animation for coupling during drag, unified codex/spindial config panel, documentation restructure (README split into docs/ folder with 5 linked pages)
+- **Session 11:** Feb 20, ~8 hours (continuing) — Isopress overlay system (stable imageCache lookup via ruinLibrary matching instead of broken slotImageCache, visual top slot calculation using disc rotation for 12 o'clock position, rotation/mirror transform display on isopress), spindial topIndex fix (mousemove and snap target the visual 12 o'clock slot instead of hardcoded slots[0]), Isopress and Isolathe editor tools (place asset, convert, boundary box, config panel, save/load), cleanup (removed pressRuinCache, updateLinkedPresses, currentOverlay, reverted rebuildSlotImageCache to simple version), full naming convention rename (cypher→codex, press→isopress, lathe→isolathe, plate naming: blank_Mark/ruinMark/IsoPlate/IsoMark), size slider for codex/isopress/isolathe config panels, isopress ruin overlay scale/offset controls, documentation updates, forge machine scene construction with puzzle
+- **Total build time:** ~76 hours (so far)
