@@ -265,6 +265,19 @@ const PuzzleHotspotEditor = (() => {
             return;
         }
 
+        // Handle accepts_item — validate inventory before proceeding
+        if (hotspot.action && hotspot.action.type === 'accepts_item') {
+            const sel = PlayMode.getSelectedItem();
+            if (!sel || sel !== hotspot.action.requiredItemId) {
+                PlayMode.showDialogue("That didn't work.", 3000);
+                return;
+            }
+            GameState.useItem(sel);
+            PlayMode.clearSelectedItem();
+            const item = InventoryEditor.getItem(sel);
+            PlayMode.showDialogue(`Used ${item ? item.name : sel}.`, 3000);
+        }
+
         if (hotspot.sound) AudioManager.playSound(hotspot.sound, hotspot.soundLoop);
 
         const autoFlag = GameState.getAutoFlag(hotspot);
@@ -272,16 +285,18 @@ const PuzzleHotspotEditor = (() => {
 
         PuzzleAssets.dispatchActionObj(hotspot.action);
 
-        // Asset change — hide or show scene asset
-        if (hotspot.assetChange && hotspot.assetChange.assetId) {
-            const acMode = hotspot.assetChange.mode || 'hide';
+        // Asset changes — hide or show assets
+        const acList = hotspot.assetChanges || (hotspot.assetChange ? [hotspot.assetChange] : []);
+        for (const ac of acList) {
+            if (!ac.assetId) continue;
+            const acMode = ac.mode || 'hide';
             if (acMode === 'show') {
-                GameState.restoreAsset(hotspot.assetChange.assetId);
+                GameState.restoreAsset(ac.assetId);
             } else {
-                GameState.removeAsset(hotspot.assetChange.assetId);
+                GameState.removeAsset(ac.assetId);
             }
-            Canvas.render();
         }
+        if (acList.length > 0) Canvas.render();
 
         if (hotspot.stateChange && hotspot.stateChange.stateIndex != null) {
             PuzzleAssets.dispatchActionObj({
@@ -296,6 +311,11 @@ const PuzzleHotspotEditor = (() => {
         }
 
         if (hotspot.clearAfterClick) GameState.clearHotspot(hotspot.id);
+
+        // Dispatch secondary action for accepts_item
+        if (hotspot.action && hotspot.action.onAccept && hotspot.action.onAccept.type !== 'none') {
+            PuzzleAssets.dispatchActionObj(hotspot.action.onAccept);
+        }
     }
 
     // -- Mouse Event Handlers --

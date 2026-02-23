@@ -1451,11 +1451,24 @@ body {
 
 /* ---- Puzzle Asset ---- */
 
+.puzzle-group-lines {
+    display: none;
+}
+.puzzle-edit-layout .puzzle-group-lines {
+    display: block;
+}
+
 .puzzle-asset {
     position: absolute;
     transform: translate(-50%, -50%);
     z-index: 5;
     cursor: grab;
+}
+
+.puzzle-asset img {
+    max-width: none;
+    max-height: none;
+    object-fit: initial;
 }
 
 .puzzle-asset.edit-mode {
@@ -1524,7 +1537,7 @@ body {
 }
 
 .puzzle-hotspot-svg polygon.play:hover {
-    fill: rgba(255, 165, 0, 0.12);
+    fill: transparent;
 }
 
 .puzzle-hotspot-svg circle.hotspot-handle {
@@ -2616,6 +2629,33 @@ body {
 
 .ideogram-cut-menu-btn:hover {
     background: var(--accent-rust);
+    color: #fff;
+}
+
+.ideogram-group-menu {
+    z-index: 210;
+    background: var(--bg-panel);
+    border: 1px solid var(--accent-orange);
+    border-radius: 6px;
+    padding: 4px;
+    pointer-events: auto;
+    display: flex;
+    gap: 4px;
+}
+
+.ideogram-group-menu-btn {
+    background: var(--bg-darker);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.15s ease;
+}
+
+.ideogram-group-menu-btn:hover {
+    background: var(--accent-orange);
     color: #fff;
 }
 

@@ -451,6 +451,24 @@ const Canvas = (() => {
         return null;
     }
 
+    function hitAssetPlay(mx, my) {
+        const scene = typeof SceneManager !== 'undefined' ? SceneManager.getCurrentScene() : null;
+        if (!scene || !scene.sceneAssets) return null;
+        const stateIdx = typeof GameState !== 'undefined' ? GameState.getSceneState(scene.id) : 0;
+        const sorted = [...scene.sceneAssets]
+            .filter(a => a.linkedItem && a.visibleStates.includes(stateIdx) && !GameState.isAssetRemoved(a.id))
+            .sort((a, b) => (a.layer || 0) - (b.layer || 0));
+        for (let i = sorted.length - 1; i >= 0; i--) {
+            const a = sorted[i];
+            const runtimePos = typeof GameState !== 'undefined' ? GameState.getAssetPosition(a.id) : null;
+            const p = runtimePos || getAssetStatePos(a, stateIdx);
+            const sx = p.x * scale + offsetX;
+            const sy = p.y * scale + offsetY;
+            if (mx >= sx && mx <= sx + p.width * scale && my >= sy && my <= sy + p.height * scale) return a;
+        }
+        return null;
+    }
+
     function handleAssetMouseDown(e) {
         if (!Toolbar.isEditMode()) return;
         if (typeof ImageEditor !== 'undefined' && ImageEditor.isActive()) return;
@@ -809,7 +827,7 @@ const Canvas = (() => {
         screenToImage, imageToScreen,
         getCanvasElement, getContext, getTransform, hasImage,
         loadAssetImage, selectSceneAsset, getSelectedSceneAsset, closeAssetPopover,
-        getAssetStatePos, fadeAsset,
+        getAssetStatePos, fadeAsset, hitAssetPlay,
         setOverlayMode, setPickModeTargets, clearPickModeTargets,
         setPickGhost, clearPickGhost
     };

@@ -1,5 +1,6 @@
 const PuzzleEditor = (() => {
     let puzzles = [];
+    let currentPuzzleId = null;
     let pendingBgImage = null;
 
     function addPuzzle(name, bgImage) {
@@ -149,7 +150,7 @@ const PuzzleEditor = (() => {
             const bgSrc = currentState ? currentState.backgroundImage : null;
 
             return `
-            <div class="scene-card puzzle-card" data-id="${puzzle.id}">
+            <div class="scene-card puzzle-card ${puzzle.id === currentPuzzleId ? 'active' : ''}" data-id="${puzzle.id}">
                 <div class="scene-thumb puzzle-thumb">
                     ${bgSrc
                         ? `<img src="${bgSrc}" alt="${puzzle.name}">`
@@ -252,9 +253,62 @@ const PuzzleEditor = (() => {
         container.querySelectorAll('.scene-card-delete').forEach(btn => {
             btn.addEventListener('click', () => {
                 removePuzzle(btn.dataset.id);
+                if (currentPuzzleId === btn.dataset.id) currentPuzzleId = null;
                 renderPuzzleList();
+                renderPuzzleContentsList();
             });
         });
+
+        // Select puzzle card
+        container.querySelectorAll('.puzzle-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('.scene-card-delete') || e.target.closest('.puzzle-card-preview') || e.target.closest('input') || e.target.closest('select') || e.target.closest('label')) return;
+                const id = card.dataset.id;
+                currentPuzzleId = currentPuzzleId === id ? null : id;
+                container.querySelectorAll('.puzzle-card').forEach(c => c.classList.toggle('active', c.dataset.id === currentPuzzleId));
+                renderPuzzleContentsList();
+            });
+        });
+    }
+
+    function renderPuzzleContentsList() {
+        const listContainer = document.getElementById('puzzle-contents-list');
+        if (!listContainer) return;
+
+        const puzzle = currentPuzzleId ? getPuzzle(currentPuzzleId) : null;
+        if (!puzzle) {
+            listContainer.innerHTML = '';
+            return;
+        }
+
+        const items = typeof InventoryEditor !== 'undefined' ? InventoryEditor.getAllItems() : [];
+        const contents = [];
+        (puzzle.states || []).forEach((st, si) => {
+            const stLabel = puzzle.states.length > 1 ? ' · S' + (si + 1) : '';
+            (st.hotspots || []).forEach(h => {
+                contents.push({ name: h.name || 'hotspot', meta: (h.action ? h.action.type : 'none') + stLabel, thumb: '' });
+            });
+            (st.assets || []).forEach(a => {
+                const isAsset = a.type === 'puzzle_asset';
+                const src = isAsset ? (a.imageData || a.src || '') : '';
+                const linkedName = isAsset && a.linkedItem ? (items.find(i => i.id === a.linkedItem) || {}).name || a.linkedItem : '';
+                contents.push({ name: a.name || a.type, meta: (linkedName || a.type) + stLabel, thumb: src });
+            });
+        });
+
+        if (contents.length === 0) {
+            listContainer.innerHTML = '<span class="panel-label" style="color:var(--text-secondary); padding:4px 0; font-size:10px;">No contents yet.</span>';
+            return;
+        }
+
+        listContainer.innerHTML = contents.map(c => `
+            <div class="scene-card puzzle-content-card" style="padding:3px 6px; min-height:auto;">
+                ${c.thumb ? `<div class="scene-thumb" style="width:24px; height:24px; flex-shrink:0;"><img src="${c.thumb}" style="width:100%; height:100%; object-fit:contain;"></div>` : ''}
+                <div class="scene-card-info" style="min-width:0; gap:0;">
+                    <span class="scene-card-meta" style="font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.name}</span>
+                    <span class="scene-card-meta" style="font-size:9px; color:var(--text-secondary);">${c.meta}</span>
+                </div>
+            </div>`).join('');
     }
 
     function initToolbar() {
@@ -289,7 +343,7 @@ const PuzzleEditor = (() => {
     }
 
     return {
-        addPuzzle, removePuzzle, getPuzzle, getAllPuzzles, getClues, loadPuzzles, renderPuzzleList, initToolbar,
+        addPuzzle, removePuzzle, getPuzzle, getAllPuzzles, getClues, loadPuzzles, renderPuzzleList, renderPuzzleContentsList, initToolbar,
         getCurrentState, getStateCount, addState, removeState, setEditingState
     };
 })();

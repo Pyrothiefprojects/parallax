@@ -145,6 +145,7 @@ const Toolbar = (() => {
                                 <input id="puzzle-file-input" type="file" accept="image/*" style="display:none">
                             </div>
                             <div id="puzzle-list" class="scene-list"></div>
+                            <div id="puzzle-contents-list" class="scene-list"></div>
                             <div class="overlay-toggle-row" style="margin-top:8px;">
                                 <label class="overlay-master-label">
                                     <input type="checkbox" id="puzzle-allow-delete-toggle"> Allow Delete
@@ -192,7 +193,7 @@ const Toolbar = (() => {
                         ideogramView.classList.add('hidden');
                     } else {
                         IdeogramEditor.activate();
-                        ideogramToggle.textContent = 'Puzzle Editor';
+                        ideogramToggle.textContent = 'Scene';
                         puzzleStandardView.classList.add('hidden');
                         ideogramView.classList.remove('hidden');
                         refreshIdeogramList();

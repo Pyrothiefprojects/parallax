@@ -5,6 +5,7 @@ const PuzzleAssets = (() => {
     let activeState = null;
     let activeContainer = null;
     let activeEditMode = false;
+    let onChangeCallback = null;
 
     // -- Asset Type Registry --
 
@@ -111,13 +112,15 @@ const PuzzleAssets = (() => {
     // -- Public Helpers --
 
     function getAssetTypes() {
-        return Object.entries(assetTypes).map(([key, val]) => ({ type: key, label: val.label }));
+        return Object.entries(assetTypes)
+            .filter(([_, val]) => !val.hidden)
+            .map(([key, val]) => ({ type: key, label: val.label }));
     }
 
-    function createAsset(type, x, y) {
+    function createAsset(type, x, y, options) {
         const def = assetTypes[type];
         if (!def) return null;
-        return def.create(x, y);
+        return def.create(x, y, options || {});
     }
 
     function renderPreview(type) {
@@ -165,6 +168,9 @@ const PuzzleAssets = (() => {
             const typeDef = assetTypes[asset.type];
             if (!typeDef) continue;
 
+            // In play mode, skip assets that have been removed (collected/hidden)
+            if (!editMode && GameState.isAssetRemoved(asset.id)) continue;
+
             const el = document.createElement('div');
             el.className = 'puzzle-asset' + (editMode ? ' edit-mode' : '');
             if (connectMode && connectSelection.has(asset.id)) {
@@ -183,12 +189,50 @@ const PuzzleAssets = (() => {
                 if (typeDef && typeDef.bindPlay) {
                     typeDef.bindPlay(el, asset);
                 }
+                // After any play click, dispatch asset changes for the group (or individual asset)
+                el.addEventListener('click', () => {
+                    const group = asset.groupId && activeState
+                        ? (activeState.assetGroups || []).find(g => g.id === asset.groupId)
+                        : null;
+                    const acTarget = group || asset;
+                    const acList = acTarget.assetChanges || (acTarget.assetChange ? [acTarget.assetChange] : []);
+                    for (const ac of acList) {
+                        if (!ac.assetId) continue;
+                        const acEl = activeContainer ? activeContainer.querySelector(`[data-asset-id="${ac.assetId}"]`) : null;
+                        const eff = ac.effect || 'fade';
+                        const useFade = eff === 'fade' || eff === 'long_fade';
+                        const fadeDur = eff === 'long_fade' ? 1.2 : 0.4;
+                        if ((ac.mode || 'hide') === 'show') {
+                            GameState.restoreAsset(ac.assetId);
+                            if (acEl && useFade) {
+                                acEl.style.opacity = '0';
+                                acEl.style.transition = 'opacity ' + fadeDur + 's';
+                                requestAnimationFrame(() => { acEl.style.opacity = '1'; });
+                            }
+                        } else {
+                            if (acEl && useFade) {
+                                acEl.style.transition = 'opacity ' + fadeDur + 's';
+                                acEl.style.opacity = '0';
+                                setTimeout(() => {
+                                    GameState.removeAsset(ac.assetId);
+                                    acEl.remove();
+                                }, fadeDur * 1000);
+                            } else {
+                                GameState.removeAsset(ac.assetId);
+                                if (acEl) acEl.remove();
+                            }
+                        }
+                    }
+                });
             }
         }
 
         // Draw group connection lines (edit mode only)
         if (editMode) {
             renderGroupLines(container);
+        } else {
+            const existing = container.querySelector('.puzzle-group-lines');
+            if (existing) existing.remove();
         }
     }
 
@@ -376,6 +420,13 @@ const PuzzleAssets = (() => {
 
                 // Fire group action
                 dispatchActionObj(group.action);
+                const grpAcList = group.assetChanges || (group.assetChange ? [group.assetChange] : []);
+                for (const ac of grpAcList) {
+                    if (!ac.assetId) continue;
+                    if ((ac.mode || 'hide') === 'show') GameState.restoreAsset(ac.assetId);
+                    else GameState.removeAsset(ac.assetId);
+                }
+                if (grpAcList.length > 0) Canvas.render();
                 if (group.stateChange && group.stateChange.stateIndex != null) {
                     dispatchActionObj({
                         type: 'puzzle_state',
@@ -410,6 +461,13 @@ const PuzzleAssets = (() => {
 
             if (asset.sound) AudioManager.playSound(asset.sound, asset.soundLoop);
             dispatchActionObj(asset.action);
+            const assetAcList = asset.assetChanges || (asset.assetChange ? [asset.assetChange] : []);
+            for (const ac of assetAcList) {
+                if (!ac.assetId) continue;
+                if ((ac.mode || 'hide') === 'show') GameState.restoreAsset(ac.assetId);
+                else GameState.removeAsset(ac.assetId);
+            }
+            if (assetAcList.length > 0) Canvas.render();
             if (asset.stateChange && asset.stateChange.stateIndex != null) {
                 dispatchActionObj({
                     type: 'puzzle_state',
@@ -469,7 +527,7 @@ const PuzzleAssets = (() => {
                 break;
 
             case 'accepts_item':
-                PlayMode.showDialogue('Used the item.');
+                // Item validation handled by puzzle hotspot click handler
                 break;
 
             case 'puzzle':
@@ -640,7 +698,12 @@ const PuzzleAssets = (() => {
             </div>
             ${ActionConfig.renderDropdown(actionTarget, 'asset-pop')}
             ${ActionConfig.renderStateChangeToggle(actionTarget, 'asset-pop', puzzleStates)}
+            ${ActionConfig.renderLoopToggle(actionTarget, 'asset-pop')}
             ${ActionConfig.renderSoundToggle(actionTarget, 'asset-pop')}
+            ${ActionConfig.renderAssetChangeToggle(actionTarget, 'asset-pop')}
+            <div class="popover-field">
+                <label><input type="checkbox" id="asset-pop-clear-after" ${actionTarget.clearAfterClick ? 'checked' : ''}> Clear after click</label>
+            </div>
             <div style="margin-top:8px; display:flex; gap:6px;">
                 <button class="panel-btn danger" id="asset-pop-delete">Delete</button>
                 ${group ? '<button class="panel-btn danger" id="asset-pop-disconnect">Disconnect</button>' : ''}
@@ -685,7 +748,15 @@ const PuzzleAssets = (() => {
 
         ActionConfig.bindDropdown(popoverEl, actionTarget, 'asset-pop');
         ActionConfig.bindStateChangeToggle(popoverEl, actionTarget, 'asset-pop');
+        ActionConfig.bindLoopToggle(popoverEl, actionTarget, 'asset-pop');
         ActionConfig.bindSoundToggle(popoverEl, actionTarget, 'asset-pop');
+        ActionConfig.bindAssetChangeToggle(popoverEl, actionTarget, 'asset-pop');
+
+        const clearCb = popoverEl.querySelector('#asset-pop-clear-after');
+        if (clearCb) {
+            clearCb.addEventListener('change', () => { actionTarget.clearAfterClick = clearCb.checked; });
+        }
+
         updatePopoverAutoFlag(asset, group);
 
         // Delete asset
@@ -695,6 +766,7 @@ const PuzzleAssets = (() => {
             if (activeState) activeState.assets = (activeState.assets || []).filter(a => a.id !== asset.id);
             closeAssetPopover();
             renderAssets(activePuzzle, activeContainer, activeEditMode);
+            if (onChangeCallback) onChangeCallback();
         });
 
         // Disconnect from group
@@ -753,6 +825,10 @@ const PuzzleAssets = (() => {
         return placingType !== null;
     }
 
+    function getPlacingType() {
+        return placingType;
+    }
+
     // -- Reset runtime state --
 
     function resetRuntime(puzzle) {
@@ -772,10 +848,11 @@ const PuzzleAssets = (() => {
         registerType,
         getAssetTypes, createAsset, renderPreview, getAutoFlag, getGroupAutoFlag,
         renderAssets, showAssetPopover, closeAssetPopover,
-        startPlacing, stopPlacing, isPlacing,
+        startPlacing, stopPlacing, isPlacing, getPlacingType,
         startConnecting, stopConnecting, isConnecting,
         toggleConnectAsset, getConnectSelection, createGroup,
         attemptSolve, resetRuntime,
-        dispatchActionObj
+        dispatchActionObj,
+        set onChange(fn) { onChangeCallback = fn; }
     };
 })();

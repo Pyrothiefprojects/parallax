@@ -16,6 +16,7 @@ const IdeogramEditor = (() => {
     let rotatingCodexDrag = null;  // { codex, lastAngle, accumulated }
     let codexSnapAnim = null;      // { codex, fromRot, toRot, delta, fromAccum, start, duration }
     let viewport = { offsetX: 0, offsetY: 0, zoom: 1.0 };
+    let deferredDraws = [];
     let draggingRuin = null;
     let rotationDialEl = null;
     let radialWheelEl = null;
@@ -28,6 +29,7 @@ const IdeogramEditor = (() => {
     let cutBox = null;        // { x, y, w, h } — finalized box awaiting action
     let cutBoxDragging = null; // { startMouseX, startMouseY, startX, startY } — moving the box
     let cutMenuEl = null;     // DOM element for cut context menu
+    let groupMenuEl = null;   // DOM element for group action menu
     let cutStamp = null;      // { canvas, width, height }
     let cutStampPos = null;   // { x, y } world-space tracking
     let clearRects = [];      // [{ x, y, w, h }] areas cleared by cut
@@ -66,6 +68,9 @@ const IdeogramEditor = (() => {
     let isopressConfigEl = null;      // DOM element for isopress config popover
     let isolatheConfigEl = null;      // DOM element for isolathe config popover
     let canvasLocked = false;  // dev mode: lock canvas panning
+    let multiSelection = [];       // [{ type: 'codex'|'isopress'|'isolathe', elem }]
+    let selectionRect = null;      // { startX, startY, currentX, currentY } — drag-select box
+    let multiDragging = null;      // { startMouseX, startMouseY, starts: [{ elem, x, y }] }
     let puzzleMode = false;
     let puzzleEditMode = false;
     let savedEditorState = null;   // saved editor state when in puzzle mode
@@ -117,6 +122,7 @@ const IdeogramEditor = (() => {
         if (e.key === 'Escape') {
             if (cutPolygonPoints.length > 0) { cutPolygonPoints = []; render(); }
             if (shapeDrawing) { shapeDrawing = null; render(); }
+            if (multiSelection.length > 0) { multiSelection = []; closeGroupMenu(); render(); }
         }
     }
 
@@ -174,6 +180,7 @@ const IdeogramEditor = (() => {
         closeColorPopover();
         closeTextInput();
         closeCutMenu();
+        closeGroupMenu();
         closeRuinRadialWheel();
         closeCodexConfig();
         closeIsopressConfig();
@@ -184,6 +191,9 @@ const IdeogramEditor = (() => {
         selectedCodex = null;
         selectedIsopress = null;
         selectedIsolathe = null;
+        multiSelection = [];
+        selectionRect = null;
+        multiDragging = null;
         draggingRuin = null;
         draggingText = null;
         draggingShape = null;
@@ -537,6 +547,7 @@ const IdeogramEditor = (() => {
         if (!puzzleMode) renderGrid();
         codices.filter(c => !c.isSpindial).forEach(c => renderCodex(c));
         codices.filter(c => c.isSpindial).forEach(c => renderCodex(c));
+        deferredDraws = [];
         isopresses.forEach(p => renderIsopress(p));
         isolathes.forEach(l => renderIsolathe(l));
         if (!puzzleMode) {
@@ -544,6 +555,61 @@ const IdeogramEditor = (() => {
             textElements.forEach(te => renderTextElement(te));
             drawnShapes.forEach(shape => renderDrawnShape(shape));
             renderShapePreview();
+        }
+        deferredDraws.forEach(fn => fn());
+        deferredDraws = [];
+
+        // Persistent group indicators (small orange dot on grouped elements)
+        if (!puzzleMode) {
+            const allElems = [
+                ...codices.map(c => c),
+                ...isopresses.map(p => p),
+                ...isolathes.map(l => l)
+            ];
+            for (const el of allElems) {
+                if (el.groupId) {
+                    const ew = el.width || DEFAULT_RUIN_SIZE;
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(255, 152, 0, 0.7)';
+                    ctx.beginPath();
+                    ctx.arc(el.x + ew - 6 / viewport.zoom, el.y + 6 / viewport.zoom, 4 / viewport.zoom, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+        }
+
+        // Multi-selection highlights
+        if (multiSelection.length > 0) {
+            ctx.save();
+            ctx.strokeStyle = '#00e5ff';
+            ctx.lineWidth = 2 / viewport.zoom;
+            ctx.setLineDash([6 / viewport.zoom, 4 / viewport.zoom]);
+            for (const sel of multiSelection) {
+                const el = sel.elem;
+                const ew = el.width || DEFAULT_RUIN_SIZE;
+                const eh = el.height || DEFAULT_RUIN_SIZE;
+                ctx.strokeRect(el.x, el.y, ew, eh);
+            }
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+
+        // Selection rect preview
+        if (selectionRect) {
+            const sx = Math.min(selectionRect.startX, selectionRect.currentX);
+            const sy = Math.min(selectionRect.startY, selectionRect.currentY);
+            const sw = Math.abs(selectionRect.currentX - selectionRect.startX);
+            const sh = Math.abs(selectionRect.currentY - selectionRect.startY);
+            ctx.save();
+            ctx.strokeStyle = '#00e5ff';
+            ctx.fillStyle = 'rgba(0, 229, 255, 0.08)';
+            ctx.lineWidth = 1 / viewport.zoom;
+            ctx.setLineDash([6 / viewport.zoom, 4 / viewport.zoom]);
+            ctx.strokeRect(sx, sy, sw, sh);
+            ctx.fillRect(sx, sy, sw, sh);
+            ctx.setLineDash([]);
+            ctx.restore();
         }
 
         // Polygon cut preview
@@ -1069,6 +1135,7 @@ const IdeogramEditor = (() => {
         selectedRuin = null;
         selectedText = null;
         selectedShape = null;
+        multiSelection = [];
         closeRotationDial();
         closeColorPopover();
         closeTextInput();
@@ -1082,6 +1149,28 @@ const IdeogramEditor = (() => {
     }
 
     // ========== PRESS / LATHE RENDERING ==========
+
+    // Get the ruin info currently shown on an isopress (from locked slot or codex top)
+    function getIsopressRuinInfo(p) {
+        if (p.lockedSlot) {
+            const ls = p.lockedSlot;
+            const ruinDef = ruinLibrary.find(r => r.image === ls.image);
+            const ruinImg = ruinDef ? imageCache[ruinDef.id] : null;
+            return { image: ls.image, rotation: ls.rotation || 0, flipped: ls.flipped || false, name: ls.name || '', ruinImg };
+        }
+        if (!p.linkedCodexId) return null;
+        const disc = codices.find(c => c.id === p.linkedCodexId);
+        if (!disc || !disc.slots || disc.slots.length === 0) return null;
+        const ruinCount = disc.ruinCount || 5;
+        const stepDeg = 360 / ruinCount;
+        const topIndex = ((Math.round(-(disc.rotation || 0) / stepDeg) % ruinCount) + ruinCount) % ruinCount;
+        const topSlot = disc.slots[topIndex];
+        if (!topSlot || !topSlot.image) return null;
+        const ruinDef = ruinLibrary.find(r => r.image === topSlot.image);
+        const ruinImg = ruinDef ? imageCache[ruinDef.id] : slotImageCache[disc.id + '_' + topIndex];
+        return { image: topSlot.image, rotation: topSlot.rotation || 0, flipped: topSlot.flipped || false, name: ruinDef ? ruinDef.name : '', ruinImg };
+    }
+
     function renderIsopress(p) {
         const img = isopressImageCache[p.id];
         if (!img) return;
@@ -1092,43 +1181,63 @@ const IdeogramEditor = (() => {
 
         ctx.save();
         ctx.translate(p.x + w / 2, p.y + h / 2);
-        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+        if (!p.hideAsset) {
+            ctx.drawImage(img, -w / 2, -h / 2, w, h);
+        } else if (!puzzleMode) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1 / viewport.zoom;
+            ctx.setLineDash([6, 4]);
+            ctx.strokeRect(-w / 2, -h / 2, w, h);
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
 
-        // Draw the ruin visually at position 1 (top) of the linked disc
-        if (p.linkedCodexId) {
-            const disc = codices.find(c => c.id === p.linkedCodexId);
-            if (disc && disc.slots && disc.slots.length > 0) {
-                const ruinCount = disc.ruinCount || 5;
-                const stepDeg = 360 / ruinCount;
-                const topIndex = ((Math.round(-(disc.rotation || 0) / stepDeg) % ruinCount) + ruinCount) % ruinCount;
-                const topSlot = disc.slots[topIndex];
-                if (topSlot && topSlot.image) {
-                    const ruinDef = ruinLibrary.find(r => r.image === topSlot.image);
-                    const ruinImg = ruinDef ? imageCache[ruinDef.id] : slotImageCache[disc.id + '_' + topIndex];
-                    if (ruinImg && ruinImg.complete !== false) {
-                        const rw = ruinImg.naturalWidth || ruinImg.width;
-                        const rh = ruinImg.naturalHeight || ruinImg.height;
-                        const ruinScale = p.ruinScale != null ? p.ruinScale : 0.7;
-                        const maxW = w * ruinScale;
-                        const maxH = h * ruinScale;
-                        const scale = Math.min(maxW / rw, maxH / rh, 1);
-                        const dw = rw * scale;
-                        const dh = rh * scale;
-                        const ox = p.ruinOffsetX || 0;
-                        const oy = p.ruinOffsetY || 0;
-                        const slotRot = (topSlot.rotation || 0) * Math.PI / 180;
-                        const isFlipped = topSlot.flipped || false;
-                        if (slotRot || isFlipped) {
-                            ctx.save();
-                            ctx.translate(ox, oy);
-                            if (isFlipped) ctx.scale(-1, 1);
-                            if (slotRot) ctx.rotate(slotRot);
-                            ctx.drawImage(ruinImg, -dw / 2, -dh / 2, dw, dh);
-                            ctx.restore();
-                        } else {
-                            ctx.drawImage(ruinImg, ox - dw / 2, oy - dh / 2, dw, dh);
-                        }
-                    }
+        // Draw the ruin visually (from locked slot or codex top)
+        const ruinInfo = getIsopressRuinInfo(p);
+        if (ruinInfo && ruinInfo.ruinImg && ruinInfo.ruinImg.complete !== false) {
+            const ruinImg = ruinInfo.ruinImg;
+            const rw = ruinImg.naturalWidth || ruinImg.width;
+            const rh = ruinImg.naturalHeight || ruinImg.height;
+            const ruinScale = p.ruinScale != null ? p.ruinScale : 0.7;
+            let dw, dh;
+            if (p.useOriginalScale) {
+                dw = rw * ruinScale;
+                dh = rh * ruinScale;
+            } else {
+                const maxW = w * ruinScale;
+                const maxH = h * ruinScale;
+                const scale = Math.min(maxW / rw, maxH / rh, 1);
+                dw = rw * scale;
+                dh = rh * scale;
+            }
+            const ox = p.ruinOffsetX || 0;
+            const oy = p.ruinOffsetY || 0;
+            const slotRot = (ruinInfo.rotation || 0) * Math.PI / 180;
+            const isFlipped = ruinInfo.flipped || false;
+            if (p.ruinOnTop) {
+                // Deferred: draw after all elements, needs own transform
+                const cx = p.x + w / 2, cy = p.y + h / 2;
+                deferredDraws.push(() => {
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.translate(ox, oy);
+                    if (isFlipped) ctx.scale(-1, 1);
+                    if (slotRot) ctx.rotate(slotRot);
+                    ctx.drawImage(ruinImg, -dw / 2, -dh / 2, dw, dh);
+                    ctx.restore();
+                });
+            } else {
+                // Inline: already in isopress transform context
+                if (slotRot || isFlipped) {
+                    ctx.save();
+                    ctx.translate(ox, oy);
+                    if (isFlipped) ctx.scale(-1, 1);
+                    if (slotRot) ctx.rotate(slotRot);
+                    ctx.drawImage(ruinImg, -dw / 2, -dh / 2, dw, dh);
+                    ctx.restore();
+                } else {
+                    ctx.drawImage(ruinImg, ox - dw / 2, oy - dh / 2, dw, dh);
                 }
             }
         }
@@ -1188,6 +1297,7 @@ const IdeogramEditor = (() => {
         selectedShape = null;
         selectedCodex = null;
         selectedIsolathe = null;
+        multiSelection = [];
         closeRotationDial();
         closeColorPopover();
         closeTextInput();
@@ -1209,6 +1319,7 @@ const IdeogramEditor = (() => {
         selectedShape = null;
         selectedCodex = null;
         selectedIsopress = null;
+        multiSelection = [];
         closeRotationDial();
         closeColorPopover();
         closeTextInput();
@@ -1296,8 +1407,18 @@ const IdeogramEditor = (() => {
         const curScale = isopress.ruinScale != null ? isopress.ruinScale : 0.7;
         const curOX = isopress.ruinOffsetX || 0;
         const curOY = isopress.ruinOffsetY || 0;
+        const ruinInfo = getIsopressRuinInfo(isopress);
+        const symbolName = ruinInfo ? (ruinInfo.name || 'Unknown') : 'None';
+        const isLocked = !!isopress.lockedSlot;
         panel.innerHTML = `
             <div style="font-size:12px; font-weight:bold; color:var(--accent-gold); margin-bottom:8px;">Isopress Config</div>
+            <div style="margin-bottom:8px; padding:6px; background:rgba(255,255,255,0.05); border-radius:4px;">
+                <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">Symbol</div>
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <span id="isopress-cfg-symbol" style="font-size:12px; color:${isLocked ? 'var(--accent-gold)' : 'var(--text-primary)'};">${symbolName}${isLocked ? ' (locked)' : ''}</span>
+                    <button class="panel-btn" id="isopress-cfg-lock" style="font-size:10px; padding:2px 8px; ${isLocked ? 'color:var(--accent-gold);' : ''}">${isLocked ? 'Unlock' : 'Lock'}</button>
+                </div>
+            </div>
             <label style="font-size:11px; color:var(--text-secondary);">Name
                 <input class="panel-input" id="isopress-cfg-name" value="${isopress.name || ''}" style="width:100%; box-sizing:border-box;">
             </label>
@@ -1339,6 +1460,20 @@ const IdeogramEditor = (() => {
                     </div>
                 </label>
             </div>
+            <div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:8px 12px;">
+                <label style="font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:4px;">
+                    <input type="checkbox" id="isopress-cfg-original-scale" ${isopress.useOriginalScale ? 'checked' : ''} style="accent-color:var(--accent-orange);">
+                    Original scale
+                </label>
+                <label style="font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:4px;">
+                    <input type="checkbox" id="isopress-cfg-ruin-on-top" ${isopress.ruinOnTop ? 'checked' : ''} style="accent-color:var(--accent-orange);">
+                    Ruin on top
+                </label>
+                <label style="font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:4px;">
+                    <input type="checkbox" id="isopress-cfg-hide-asset" ${isopress.hideAsset ? 'checked' : ''} style="accent-color:var(--accent-orange);">
+                    Hide plate
+                </label>
+            </div>
             <div style="margin-top:8px; text-align:right;">
                 <button class="panel-btn" id="isopress-cfg-delete" style="color:#ff4444;">Delete</button>
             </div>
@@ -1347,6 +1482,20 @@ const IdeogramEditor = (() => {
         if (puzzleMode) panel.style.zIndex = '400';
         isopressConfigEl = panel;
 
+        const lockBtn = panel.querySelector('#isopress-cfg-lock');
+        if (lockBtn) lockBtn.addEventListener('click', () => {
+            if (isopress.lockedSlot) {
+                isopress.lockedSlot = null;
+            } else {
+                const info = getIsopressRuinInfo(isopress);
+                if (info) {
+                    isopress.lockedSlot = { image: info.image, rotation: info.rotation, flipped: info.flipped, name: info.name };
+                }
+            }
+            render();
+            showIsopressConfig(isopress);
+        });
+
         const nameInput = panel.querySelector('#isopress-cfg-name');
         if (nameInput) nameInput.addEventListener('input', () => { isopress.name = nameInput.value; });
 
@@ -1354,6 +1503,10 @@ const IdeogramEditor = (() => {
         const sizeVal = panel.querySelector('#isopress-cfg-size-val');
         if (sizeSlider) sizeSlider.addEventListener('input', () => {
             const v = parseInt(sizeSlider.value);
+            const oldW = isopress.width || DEFAULT_RUIN_SIZE;
+            const oldH = isopress.height || DEFAULT_RUIN_SIZE;
+            isopress.x += (oldW - v) / 2;
+            isopress.y += (oldH - v) / 2;
             isopress.width = v;
             isopress.height = v;
             sizeVal.textContent = v;
@@ -1387,6 +1540,24 @@ const IdeogramEditor = (() => {
         if (oySlider) oySlider.addEventListener('input', () => {
             isopress.ruinOffsetY = parseInt(oySlider.value);
             oyVal.textContent = isopress.ruinOffsetY + 'px';
+            render();
+        });
+
+        const origScaleCheck = panel.querySelector('#isopress-cfg-original-scale');
+        if (origScaleCheck) origScaleCheck.addEventListener('change', () => {
+            isopress.useOriginalScale = origScaleCheck.checked;
+            render();
+        });
+
+        const ruinOnTopCheck = panel.querySelector('#isopress-cfg-ruin-on-top');
+        if (ruinOnTopCheck) ruinOnTopCheck.addEventListener('change', () => {
+            isopress.ruinOnTop = ruinOnTopCheck.checked;
+            render();
+        });
+
+        const hideAssetCheck = panel.querySelector('#isopress-cfg-hide-asset');
+        if (hideAssetCheck) hideAssetCheck.addEventListener('change', () => {
+            isopress.hideAsset = hideAssetCheck.checked;
             render();
         });
 
@@ -1504,7 +1675,7 @@ const IdeogramEditor = (() => {
         input.onchange = (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            const imagePath = 'assets/puzzles/' + file.name;
+            const imagePath = 'assets/puzzles/pieces/' + file.name;
             if (!codex.slots) codex.slots = [];
             while (codex.slots.length <= slotIndex) codex.slots.push({ image: null, name: '', rotation: 0 });
             loadImageClean(imagePath, (img) => {
@@ -2130,7 +2301,7 @@ const IdeogramEditor = (() => {
                 for (const file of e.target.files) {
                     const name = file.name.replace(/\.[^.]+$/, '').replace(/^ruin_/, '').replace(/_/g, ' ');
                     const capitalName = name.charAt(0).toUpperCase() + name.slice(1);
-                    const imagePath = 'assets/puzzles/' + file.name;
+                    const imagePath = 'assets/puzzles/pieces/' + file.name;
                     addRuinToLibrary(capitalName, imagePath);
                 }
                 fileInput.value = '';
@@ -2220,6 +2391,7 @@ const IdeogramEditor = (() => {
             removeCreateIdeogramSubTools();
         }
 
+        multiSelection = [];
         if (activeTool === toolName) {
             activeTool = 'select';
             if (toolsetEl) toolsetEl.querySelectorAll('.blueprint-tool').forEach(btn => btn.classList.remove('active'));
@@ -2626,6 +2798,62 @@ const IdeogramEditor = (() => {
 
     function closeCutMenu() {
         if (cutMenuEl) { cutMenuEl.remove(); cutMenuEl = null; }
+    }
+
+    function showGroupMenu(screenX, screenY) {
+        closeGroupMenu();
+        const overlay = document.getElementById('hotspot-overlay');
+        if (!overlay) return;
+
+        const menu = document.createElement('div');
+        menu.className = 'ideogram-group-menu';
+        menu.style.position = 'absolute';
+        menu.style.left = screenX + 'px';
+        menu.style.top = screenY + 'px';
+
+        // Check if all selected elements share the same groupId
+        const allGrouped = multiSelection.length > 1 &&
+            multiSelection.every(s => s.elem.groupId) &&
+            multiSelection.every(s => s.elem.groupId === multiSelection[0].elem.groupId);
+
+        if (allGrouped) {
+            const ungroupBtn = document.createElement('button');
+            ungroupBtn.textContent = 'Ungroup';
+            ungroupBtn.className = 'ideogram-group-menu-btn';
+            ungroupBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                for (const s of multiSelection) {
+                    delete s.elem.groupId;
+                }
+                closeGroupMenu();
+                multiSelection = [];
+                render();
+            });
+            menu.appendChild(ungroupBtn);
+        } else {
+            const groupBtn = document.createElement('button');
+            groupBtn.textContent = 'Group';
+            groupBtn.className = 'ideogram-group-menu-btn';
+            groupBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const gid = 'group_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+                for (const s of multiSelection) {
+                    s.elem.groupId = gid;
+                }
+                closeGroupMenu();
+                multiSelection = [];
+                render();
+            });
+            menu.appendChild(groupBtn);
+        }
+
+        menu.addEventListener('mousedown', (e) => e.stopPropagation());
+        overlay.appendChild(menu);
+        groupMenuEl = menu;
+    }
+
+    function closeGroupMenu() {
+        if (groupMenuEl) { groupMenuEl.remove(); groupMenuEl = null; }
     }
 
     function executeCut() {
@@ -3593,6 +3821,41 @@ const IdeogramEditor = (() => {
 
         // Select mode (default) — handle hit first, then body hit, click vs drag
 
+        // 0. Multi-selection / persistent group drag
+        {
+            const hitCo = hitTestCodex(mx, my);
+            const hitIp = hitTestIsopress(mx, my);
+            const hitIl = hitTestIsolathe(mx, my);
+            const hitElem = hitCo || hitIp || hitIl;
+
+            if (hitElem) {
+                // a) Already in multi-selection — drag them
+                if (multiSelection.length > 0 && multiSelection.some(s => s.elem === hitElem)) {
+                    closeGroupMenu();
+                    multiDragging = {
+                        startMouseX: mx, startMouseY: my,
+                        starts: multiSelection.map(s => ({ elem: s.elem, x: s.elem.x, y: s.elem.y }))
+                    };
+                    return;
+                }
+                // b) Persistent group — auto-select all members and drag
+                if (hitElem.groupId) {
+                    closeGroupMenu();
+                    multiSelection = [];
+                    const gid = hitElem.groupId;
+                    for (const c of codices) { if (c.groupId === gid) multiSelection.push({ type: 'codex', elem: c }); }
+                    for (const p of isopresses) { if (p.groupId === gid) multiSelection.push({ type: 'isopress', elem: p }); }
+                    for (const l of isolathes) { if (l.groupId === gid) multiSelection.push({ type: 'isolathe', elem: l }); }
+                    multiDragging = {
+                        startMouseX: mx, startMouseY: my,
+                        starts: multiSelection.map(s => ({ elem: s.elem, x: s.elem.x, y: s.elem.y }))
+                    };
+                    render();
+                    return;
+                }
+            }
+        }
+
         // 1. Check resize handle hit on any selected element
         const selElem = getSelectedElement();
         if (selElem) {
@@ -3739,7 +4002,7 @@ const IdeogramEditor = (() => {
             return;
         }
 
-        // 4. Click on empty space — deselect all
+        // 4. Click on empty space — start selection rect (or deselect on click)
         closeRotationDial();
         closeCodexConfig();
         closeIsopressConfig();
@@ -3748,8 +4011,10 @@ const IdeogramEditor = (() => {
         if (selectedCodex) deselectCodex();
         if (selectedIsopress) deselectIsopress();
         if (selectedIsolathe) deselectIsolathe();
-        if (selectedText) { selectedText = null; closeTextInput(); render(); }
-        if (selectedShape) { selectedShape = null; render(); }
+        if (selectedText) { selectedText = null; closeTextInput(); }
+        if (selectedShape) { selectedShape = null; }
+        selectionRect = { startX: mx, startY: my, currentX: mx, currentY: my };
+        render();
     }
 
     function handleMouseMove(e) {
@@ -3796,6 +4061,26 @@ const IdeogramEditor = (() => {
         if (shapeDrawing && activeTool === 'createIdeogram') {
             shapeDrawing.currentX = snapToGrid(mx);
             shapeDrawing.currentY = snapToGrid(my);
+            render();
+            return;
+        }
+
+        // Selection rect drag
+        if (selectionRect) {
+            selectionRect.currentX = mx;
+            selectionRect.currentY = my;
+            render();
+            return;
+        }
+
+        // Multi-selection group drag
+        if (multiDragging) {
+            const dx = mx - multiDragging.startMouseX;
+            const dy = my - multiDragging.startMouseY;
+            for (const s of multiDragging.starts) {
+                s.elem.x = snapToGrid(s.x + dx);
+                s.elem.y = snapToGrid(s.y + dy);
+            }
             render();
             return;
         }
@@ -4150,6 +4435,54 @@ const IdeogramEditor = (() => {
         const mx = (e.clientX - rect.left - viewport.offsetX) / viewport.zoom;
         const my = (e.clientY - rect.top - viewport.offsetY) / viewport.zoom;
 
+        // Finalize multi-drag
+        if (multiDragging) {
+            multiDragging = null;
+            render();
+            return;
+        }
+
+        // Finalize selection rect
+        if (selectionRect) {
+            const sx = Math.min(selectionRect.startX, selectionRect.currentX);
+            const sy = Math.min(selectionRect.startY, selectionRect.currentY);
+            const sw = Math.abs(selectionRect.currentX - selectionRect.startX);
+            const sh = Math.abs(selectionRect.currentY - selectionRect.startY);
+            selectionRect = null;
+
+            if (sw > 5 && sh > 5) {
+                // Dragged a meaningful rect — find all elements inside
+                multiSelection = [];
+                const inBox = (ex, ey, ew, eh) => {
+                    const ecx = ex + ew / 2, ecy = ey + eh / 2;
+                    return ecx >= sx && ecx <= sx + sw && ecy >= sy && ecy <= sy + sh;
+                };
+                for (const c of codices) {
+                    const cw = c.width || DEFAULT_RUIN_SIZE;
+                    const ch = c.height || DEFAULT_RUIN_SIZE;
+                    if (inBox(c.x, c.y, cw, ch)) multiSelection.push({ type: 'codex', elem: c });
+                }
+                for (const p of isopresses) {
+                    const pw = p.width || DEFAULT_RUIN_SIZE;
+                    const ph = p.height || DEFAULT_RUIN_SIZE;
+                    if (inBox(p.x, p.y, pw, ph)) multiSelection.push({ type: 'isopress', elem: p });
+                }
+                for (const l of isolathes) {
+                    const lw = l.width || DEFAULT_RUIN_SIZE;
+                    const lh = l.height || DEFAULT_RUIN_SIZE;
+                    if (inBox(l.x, l.y, lw, lh)) multiSelection.push({ type: 'isolathe', elem: l });
+                }
+                if (multiSelection.length >= 2) {
+                    showGroupMenu(e.clientX, e.clientY);
+                }
+            } else {
+                // Just a click — clear multi-selection
+                multiSelection = [];
+            }
+            render();
+            return;
+        }
+
         // Finalize cut box drag — show menu at release point
         if (cutBoxDragging) {
             cutBoxDragging = null;
@@ -4468,6 +4801,7 @@ const IdeogramEditor = (() => {
     // ========== SELECTION ==========
     function selectRuin(ruin) {
         selectedRuin = ruin;
+        multiSelection = [];
         if (selectedCodex) { selectedCodex = null; closeCodexConfig(); }
         render();
         // Config menu (rotation dial) shown on click of already-selected ruin, not on first select
@@ -4878,6 +5212,9 @@ const IdeogramEditor = (() => {
         closeCodexConfig();
         closeIsopressConfig();
         closeIsolatheConfig();
+        closeGroupMenu();
+        multiSelection = [];
+        multiDragging = null;
         selectedCodex = null;
         selectedIsopress = null;
         selectedIsolathe = null;

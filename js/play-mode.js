@@ -67,6 +67,16 @@ const PlayMode = (() => {
         return active;
     }
 
+    function getSelectedItem() {
+        return selectedItem;
+    }
+
+    function clearSelectedItem() {
+        selectedItem = null;
+        Canvas.getCanvasElement().style.cursor = 'default';
+        puzzleOverlay.style.cursor = '';
+    }
+
     // -- Inventory Overlay --
 
     function openInventoryOverlay() {
@@ -160,7 +170,13 @@ const PlayMode = (() => {
                 el.addEventListener('click', (e) => {
                     e.stopPropagation();
                     selectedItem = itemId;
-                    Canvas.getCanvasElement().style.cursor = getItemCursor(itemId);
+                    try {
+                        const cur = getItemCursor(itemId);
+                        Canvas.getCanvasElement().style.cursor = cur;
+                        if (!puzzleOverlay.classList.contains('hidden')) {
+                            puzzleOverlay.style.cursor = cur;
+                        }
+                    } catch (_) {}
                     closeRadialWheel();
                 });
 
@@ -225,11 +241,21 @@ const PlayMode = (() => {
         // Play mode: Continue button (if any state has assets)
         const hasAssets = puzzle.states && puzzle.states.some(s => s.assets && s.assets.length > 0);
         if (puzzleOverlayMode === 'play' && hasAssets) {
-            html += '<div class="puzzle-continue-wrap"><button class="panel-btn primary puzzle-continue-btn" id="puzzle-continue-btn">Continue</button></div>';
+            html += '<div class="puzzle-continue-wrap"><button class="panel-btn primary puzzle-continue-btn" id="puzzle-continue-btn">Solve</button></div>';
         }
 
         puzzleContent.innerHTML = html;
         puzzleOverlay.classList.remove('hidden');
+
+        // Apply saved panel position
+        const panel = puzzleOverlay.querySelector('.puzzle-overlay-panel');
+        if (puzzle.panelPosition && panel) {
+            panel.style.position = 'fixed';
+            panel.style.left = puzzle.panelPosition.left + 'px';
+            panel.style.top = puzzle.panelPosition.top + 'px';
+            panel.style.margin = '0';
+            panel.style.transform = 'none';
+        }
 
         const assetLayer = document.getElementById('puzzle-asset-layer');
         const bgWrap = puzzleContent.querySelector('.puzzle-overlay-bg-wrap');
@@ -257,16 +283,14 @@ const PlayMode = (() => {
             renderAfterLayout();
         }
 
-        // Play mode: bind Continue button
+        // Play mode: bind Solve button
         if (puzzleOverlayMode === 'play' && hasAssets) {
-            const continueBtn = document.getElementById('puzzle-continue-btn');
-            if (continueBtn) {
-                continueBtn.addEventListener('click', () => {
+            const solveBtn = document.getElementById('puzzle-continue-btn');
+            if (solveBtn) {
+                solveBtn.addEventListener('click', () => {
                     const solved = PuzzleAssets.attemptSolve(puzzle);
                     if (solved) {
-                        continueBtn.textContent = 'Solved!';
-                        continueBtn.disabled = true;
-                        continueBtn.classList.add('solved');
+                        closePuzzleOverlay();
                     }
                 });
             }
@@ -297,6 +321,47 @@ const PlayMode = (() => {
     function setupEditLayout(puzzle, assetLayer, bgWrap) {
         const panel = puzzleOverlay.querySelector('.puzzle-overlay-panel');
 
+        // Add drag handle for panel positioning
+        const dragHandle = document.createElement('div');
+        dragHandle.style.cssText = 'cursor:grab; background:rgba(255,255,255,0.05); border-bottom:1px solid rgba(255,255,255,0.1); padding:4px 8px; font-size:10px; color:var(--text-secondary); text-align:center; user-select:none;';
+        dragHandle.textContent = '\u22EE\u22EE Drag to position';
+        panel.insertBefore(dragHandle, panel.firstChild);
+
+        let panelDragState = null;
+        dragHandle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            dragHandle.style.cursor = 'grabbing';
+            const rect = panel.getBoundingClientRect();
+            panelDragState = { startX: e.clientX, startY: e.clientY, startLeft: rect.left, startTop: rect.top };
+
+            const onMove = (me) => {
+                if (!panelDragState) return;
+                const dx = me.clientX - panelDragState.startX;
+                const dy = me.clientY - panelDragState.startY;
+                panel.style.position = 'fixed';
+                panel.style.left = (panelDragState.startLeft + dx) + 'px';
+                panel.style.top = (panelDragState.startTop + dy) + 'px';
+                panel.style.margin = '0';
+                panel.style.transform = 'none';
+            };
+
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                dragHandle.style.cursor = 'grab';
+                if (panelDragState) {
+                    puzzle.panelPosition = {
+                        left: parseInt(panel.style.left),
+                        top: parseInt(panel.style.top)
+                    };
+                    panelDragState = null;
+                }
+            };
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+
         // Create flex layout wrapper
         const layout = document.createElement('div');
         layout.className = 'puzzle-edit-layout';
@@ -315,15 +380,23 @@ const PlayMode = (() => {
                 <span class="panel-label" style="font-size:11px;">Tools</span>
                 <button class="puzzle-tools-toggle" id="puzzle-tools-toggle" title="Switch side">&#8644;</button>
             </div>
-            <select class="panel-select" id="puzzle-asset-type-select">
-                ${assetTypes.map(at => `<option value="${at.type}">${at.label}</option>`).join('')}
-                <option value="__hotspot__">Hotspot</option>
-            </select>
-            <button class="panel-btn primary" id="puzzle-place-asset-btn" style="width:100%;">+ Place</button>
+            <button class="panel-btn" id="puzzle-place-hotspot-btn" style="width:100%;">+ Hotspot</button>
             <div class="puzzle-hotspot-toolbar" id="puzzle-hotspot-toolbar">
                 <button class="panel-btn" id="puzzle-hotspot-undo">Undo Point</button>
                 <button class="panel-btn danger" id="puzzle-hotspot-delete">Delete</button>
             </div>
+            ${assetTypes.length ? `
+            <div class="puzzle-tools-divider"></div>
+            <select class="panel-select" id="puzzle-asset-type-select">
+                ${assetTypes.map(at => `<option value="${at.type}">${at.label}</option>`).join('')}
+            </select>
+            <button class="panel-btn primary" id="puzzle-place-asset-btn" style="width:100%;">+ Place</button>
+            ` : ''}
+            <div class="puzzle-tools-divider"></div>
+            <span class="panel-label" style="font-size:11px;">Assets</span>
+            <button class="panel-btn primary" id="puzzle-add-asset-btn" style="width:100%;">+ Add Asset</button>
+            <input type="file" id="puzzle-asset-file-input" accept="image/png,image/*" style="display:none;">
+            <div id="puzzle-asset-list"></div>
             <div class="puzzle-tools-divider"></div>
             <button class="panel-btn" id="puzzle-connect-btn" style="width:100%;">Connect</button>
             <div class="puzzle-connect-toolbar" id="puzzle-connect-toolbar">
@@ -332,6 +405,8 @@ const PlayMode = (() => {
                 <button class="panel-btn" id="puzzle-connect-cancel" style="width:100%;">Cancel</button>
             </div>
             <span id="puzzle-edit-status" class="panel-label" style="color:var(--text-secondary); font-size:11px; word-break:break-word;"></span>
+            <div class="puzzle-tools-divider"></div>
+            <button class="panel-btn" id="puzzle-reset-position-btn" style="width:100%;">Reset Position</button>
             <div class="puzzle-tools-divider"></div>
             <span class="panel-label" style="font-size:11px;">Ideogram</span>
             <select class="panel-select" id="puzzle-ideogram-select">
@@ -358,8 +433,48 @@ const PlayMode = (() => {
         bindEditTools(tools, puzzle, assetLayer, bgWrap);
     }
 
+    function renderPuzzleAssetList(puzzle, tools) {
+        const container = tools.querySelector('#puzzle-asset-list');
+        if (!container) return;
+        const currentSt = PuzzleEditor.getCurrentState(puzzle);
+        const assets = currentSt ? (currentSt.assets || []).filter(a => a.type === 'puzzle_asset') : [];
+        if (assets.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+        const items = typeof InventoryEditor !== 'undefined' ? InventoryEditor.getAllItems() : [];
+        container.innerHTML = assets.map(a => {
+            const src = a.imageData || a.src;
+            const linkedName = a.linkedItem ? (items.find(i => i.id === a.linkedItem) || {}).name || a.linkedItem : 'None';
+            return `
+            <div class="scene-card puzzle-asset-card" data-asset-id="${a.id}" style="padding:4px; margin-top:4px;">
+                <div class="scene-thumb" style="width:32px; height:32px; flex-shrink:0;">
+                    <img src="${src}" style="width:100%; height:100%; object-fit:contain;">
+                </div>
+                <div class="scene-card-info" style="min-width:0;">
+                    <span class="scene-card-meta" style="font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.name || 'asset'}</span>
+                    <span class="scene-card-meta" style="font-size:9px; color:var(--text-secondary);">${linkedName}</span>
+                </div>
+                <button class="scene-card-delete puzzle-asset-delete" data-asset-id="${a.id}" title="Remove">&times;</button>
+            </div>`;
+        }).join('');
+
+        container.querySelectorAll('.puzzle-asset-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const assetId = btn.dataset.assetId;
+                if (!currentSt || !currentSt.assets) return;
+                currentSt.assets = currentSt.assets.filter(a => a.id !== assetId);
+                const assetLayer = document.querySelector('.puzzle-asset-layer');
+                if (assetLayer) PuzzleAssets.renderAssets(puzzle, assetLayer, true);
+                renderPuzzleAssetList(puzzle, tools);
+            });
+        });
+    }
+
     function bindEditTools(tools, puzzle, assetLayer, bgWrap) {
         const placeBtn = tools.querySelector('#puzzle-place-asset-btn');
+        const hotspotBtn = tools.querySelector('#puzzle-place-hotspot-btn');
         const typeSelect = tools.querySelector('#puzzle-asset-type-select');
         const statusEl = tools.querySelector('#puzzle-edit-status');
         const connectBtn = tools.querySelector('#puzzle-connect-btn');
@@ -372,6 +487,24 @@ const PlayMode = (() => {
         const hotspotDeleteBtn = tools.querySelector('#puzzle-hotspot-delete');
         const ideogramSelect = tools.querySelector('#puzzle-ideogram-select');
         const ideogramClearBtn = tools.querySelector('#puzzle-ideogram-clear');
+
+        const resetPosBtn = tools.querySelector('#puzzle-reset-position-btn');
+        if (resetPosBtn) {
+            resetPosBtn.addEventListener('click', () => {
+                delete puzzle.panelPosition;
+                const panel = puzzleOverlay.querySelector('.puzzle-overlay-panel');
+                if (panel) {
+                    panel.style.position = '';
+                    panel.style.left = '';
+                    panel.style.top = '';
+                    panel.style.margin = '';
+                    panel.style.transform = '';
+                }
+            });
+        }
+
+        // Refresh asset list when puzzle-assets.js deletes/modifies an asset
+        PuzzleAssets.onChange = () => renderPuzzleAssetList(puzzle, tools);
 
         ideogramSelect.addEventListener('change', () => {
             IdeogramEditor.deactivateForPuzzle();
@@ -414,6 +547,9 @@ const PlayMode = (() => {
         hotspotUndoBtn.addEventListener('click', () => PuzzleHotspotEditor.undoPoint());
         hotspotDeleteBtn.addEventListener('click', () => PuzzleHotspotEditor.deleteSelected());
 
+        // Image asset pending data
+        let pendingAssetData = null;
+
         // Ghost placement preview
         let ghostEl = null;
 
@@ -455,34 +591,39 @@ const PlayMode = (() => {
             });
         }
 
-        // Place asset / hotspot
-        placeBtn.addEventListener('click', () => {
+        // Hotspot drawing
+        hotspotBtn.addEventListener('click', () => {
             if (PuzzleAssets.isConnecting()) {
                 PuzzleAssets.stopConnecting();
                 connectBtn.classList.remove('active');
                 connectToolbar.classList.remove('active');
             }
-            const type = typeSelect.value;
-
-            if (type === '__hotspot__') {
-                // Hotspot drawing mode
-                PuzzleAssets.stopPlacing();
-                removeGhost();
-                PuzzleHotspotEditor.startDrawing();
-                statusEl.textContent = 'Click to place points. Double-click to close.';
-                placeBtn.classList.add('active');
-                hotspotToolbar.classList.add('active');
-                return;
-            }
-
-            // Normal asset placement
-            PuzzleHotspotEditor.stopDrawing();
-            hotspotToolbar.classList.remove('active');
-            PuzzleAssets.startPlacing(type);
-            statusEl.textContent = 'Click to place...';
-            placeBtn.classList.add('active');
-            createGhost(type);
+            PuzzleAssets.stopPlacing();
+            removeGhost();
+            if (placeBtn) placeBtn.classList.remove('active');
+            PuzzleHotspotEditor.startDrawing();
+            statusEl.textContent = 'Click to place points. Double-click to close.';
+            hotspotBtn.classList.add('active');
+            hotspotToolbar.classList.add('active');
         });
+
+        // Place puzzle asset (combo lock, terminal, etc.)
+        if (placeBtn && typeSelect) {
+            placeBtn.addEventListener('click', () => {
+                if (PuzzleAssets.isConnecting()) {
+                    PuzzleAssets.stopConnecting();
+                    connectBtn.classList.remove('active');
+                    connectToolbar.classList.remove('active');
+                }
+                PuzzleHotspotEditor.stopDrawing();
+                hotspotToolbar.classList.remove('active');
+                hotspotBtn.classList.remove('active');
+                PuzzleAssets.startPlacing(typeSelect.value);
+                statusEl.textContent = 'Click to place...';
+                placeBtn.classList.add('active');
+                createGhost(typeSelect.value);
+            });
+        }
 
         // Placement click on bg-wrap (asset placement only, hotspot clicks handled by PuzzleHotspotEditor)
         if (bgWrap && assetLayer) {
@@ -490,7 +631,7 @@ const PlayMode = (() => {
                 // If hotspot drawing just finished, clean up UI
                 if (!PuzzleHotspotEditor.isDrawing() && hotspotToolbar.classList.contains('active')) {
                     hotspotToolbar.classList.remove('active');
-                    placeBtn.classList.remove('active');
+                    hotspotBtn.classList.remove('active');
                     statusEl.textContent = '';
                 }
 
@@ -506,18 +647,64 @@ const PlayMode = (() => {
                 const currentSt = PuzzleEditor.getCurrentState(puzzle);
                 if (!currentSt) return;
                 if (!currentSt.assets) currentSt.assets = [];
-                const asset = PuzzleAssets.createAsset(typeSelect.value, x, y);
+                const placingType = PuzzleAssets.getPlacingType();
+                const asset = placingType === 'puzzle_asset'
+                    ? PuzzleAssets.createAsset('puzzle_asset', x, y, pendingAssetData)
+                    : PuzzleAssets.createAsset(typeSelect ? typeSelect.value : placingType, x, y);
                 if (asset) {
                     currentSt.assets.push(asset);
                     PuzzleAssets.stopPlacing();
                     PuzzleAssets.renderAssets(puzzle, assetLayer, true);
+                    renderPuzzleAssetList(puzzle, tools);
                 }
 
+                pendingAssetData = null;
                 removeGhost();
                 statusEl.textContent = '';
-                placeBtn.classList.remove('active');
+                if (placeBtn) placeBtn.classList.remove('active');
             });
         }
+
+        // Add asset
+        const addAssetBtn = tools.querySelector('#puzzle-add-asset-btn');
+        const assetFileInput = tools.querySelector('#puzzle-asset-file-input');
+        if (addAssetBtn && assetFileInput) {
+            addAssetBtn.addEventListener('click', () => assetFileInput.click());
+            assetFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    pendingAssetData = {
+                        name: file.name.replace(/\.[^.]+$/, ''),
+                        src: 'assets/puzzles/pieces/' + file.name,
+                        imageData: url,
+                        width: img.naturalWidth,
+                        height: img.naturalHeight
+                    };
+                    // Enter placement mode
+                    PuzzleHotspotEditor.stopDrawing();
+                    hotspotToolbar.classList.remove('active');
+                    hotspotBtn.classList.remove('active');
+                    PuzzleAssets.startPlacing('puzzle_asset');
+                    statusEl.textContent = 'Click to place image...';
+
+                    // Create image ghost
+                    removeGhost();
+                    ghostEl = document.createElement('div');
+                    ghostEl.className = 'puzzle-asset edit-mode puzzle-ghost';
+                    ghostEl.innerHTML = `<img src="${url}" style="width:${img.naturalWidth}px; height:${img.naturalHeight}px; display:block; pointer-events:none; opacity:0.6;" draggable="false">`;
+                    assetLayer.appendChild(ghostEl);
+                    if (bgWrap) bgWrap.style.cursor = 'none';
+                };
+                img.src = url;
+                assetFileInput.value = '';
+            });
+        }
+
+        // Render asset list in tools panel
+        renderPuzzleAssetList(puzzle, tools);
 
         // Connect mode
         function updateConnectConfirm() {
@@ -537,7 +724,8 @@ const PlayMode = (() => {
                 PuzzleHotspotEditor.stopDrawing();
                 PuzzleHotspotEditor.render();
                 hotspotToolbar.classList.remove('active');
-                placeBtn.classList.remove('active');
+                hotspotBtn.classList.remove('active');
+                if (placeBtn) placeBtn.classList.remove('active');
                 removeGhost();
                 PuzzleAssets.startConnecting();
                 connectBtn.classList.add('active');
@@ -659,6 +847,7 @@ const PlayMode = (() => {
             // Re-init hotspot editor for new state
             if (st) PuzzleHotspotEditor.init(st, hotspotSvg, bgWrap, puzzleOverlay, true, puzzle);
             renderStateWidget();
+            renderPuzzleAssetList(puzzle, tools);
         }
 
         stateFileInput.addEventListener('change', (e) => {
@@ -678,6 +867,13 @@ const PlayMode = (() => {
         LoopAnimator.stopPuzzle();
         TransitionPlayer.cancel();
 
+        // Remove drag handles and group connection lines before close animation
+        const panelEl = puzzleOverlay.querySelector('.puzzle-overlay-panel');
+        if (panelEl) {
+            panelEl.querySelectorAll('div').forEach(el => {
+                if (el.textContent.includes('Drag to position')) el.remove();
+            });
+        }
         // Restore panel from edit layout wrapper
         const layout = document.getElementById('puzzle-edit-layout');
         if (layout) {
@@ -685,6 +881,10 @@ const PlayMode = (() => {
             if (panel) puzzleOverlay.appendChild(panel);
             layout.remove();
         }
+
+        // Remove group connection lines before close animation
+        const groupLines = puzzleOverlay.querySelector('.puzzle-group-lines');
+        if (groupLines) groupLines.remove();
 
         // Animate close: shrink panel + fade backdrop
         const backdrop = puzzleOverlay.querySelector('.puzzle-overlay-backdrop');
@@ -697,7 +897,15 @@ const PlayMode = (() => {
         setTimeout(() => {
             puzzleOverlay.classList.add('hidden');
             if (backdrop) backdrop.classList.remove('closing');
-            if (panel) panel.classList.remove('closing');
+            if (panel) {
+                panel.classList.remove('closing');
+                // Reset positioning styles after animation completes
+                panel.style.position = '';
+                panel.style.left = '';
+                panel.style.top = '';
+                panel.style.margin = '';
+                panel.style.transform = '';
+            }
         }, duration);
 
         PuzzleAssets.closeAssetPopover();
@@ -786,16 +994,25 @@ const PlayMode = (() => {
             itemCursorCache[itemId] = 'grab';
             return 'grab';
         }
+        // Try using preloaded image first
+        const preloaded = Preloader.getImage(item.image);
+        if (preloaded) {
+            const c = document.createElement('canvas');
+            c.width = 32; c.height = 32;
+            c.getContext('2d').drawImage(preloaded, 0, 0, 32, 32);
+            itemCursorCache[itemId] = `url(${c.toDataURL()}) 16 16, auto`;
+            return itemCursorCache[itemId];
+        }
+        // Fallback: load async and cache when ready
         const img = new Image();
+        img.onload = () => {
+            const c = document.createElement('canvas');
+            c.width = 32; c.height = 32;
+            c.getContext('2d').drawImage(img, 0, 0, 32, 32);
+            itemCursorCache[itemId] = `url(${c.toDataURL()}) 16 16, auto`;
+        };
         img.src = item.image;
-        const c = document.createElement('canvas');
-        c.width = 32;
-        c.height = 32;
-        const cx = c.getContext('2d');
-        cx.drawImage(img, 0, 0, 32, 32);
-        const url = c.toDataURL();
-        itemCursorCache[itemId] = `url(${url}) 16 16, auto`;
-        return itemCursorCache[itemId];
+        return 'grab';
     }
 
     function getActionCursor(hotspot) {
@@ -1012,8 +1229,27 @@ const PlayMode = (() => {
         const img = Canvas.screenToImage(sx, sy);
 
         const hotspot = HotspotEditor.hitTest(img.x, img.y);
-        if (!hotspot) return;
-        if (GameState.isHotspotCleared(hotspot.id)) return;
+        if (!hotspot || GameState.isHotspotCleared(hotspot.id)) {
+            // Check for linked-item asset pickup
+            const asset = Canvas.hitAssetPlay(sx, sy);
+            if (asset && asset.linkedItem) {
+                GameState.addToInventory(asset.linkedItem);
+                const item = InventoryEditor.getItem(asset.linkedItem);
+                const itemName = item ? item.name : asset.linkedItem.replace(/_\d+$/, '').replace(/_/g, ' ');
+                if (asset.transition === 'fade') {
+                    Canvas.fadeAsset(asset.id, 1, 0, 400, () => {
+                        GameState.removeAsset(asset.id);
+                        Canvas.render();
+                    });
+                } else {
+                    GameState.removeAsset(asset.id);
+                    Canvas.render();
+                }
+                showDialogue(`Picked up: ${itemName}`, 3000);
+                renderInventory();
+            }
+            return;
+        }
 
         // Check conditions
         if (!GameState.checkFlags(hotspot.requires)) {
@@ -1077,11 +1313,44 @@ const PlayMode = (() => {
 
             case 'accepts_item':
                 if (selectedItem && selectedItem === action.requiredItemId) {
+                    const usedItem = InventoryEditor.getItem(selectedItem);
                     GameState.useItem(selectedItem);
                     if (autoFlag) GameState.setFlag(autoFlag);
                     selectedItem = null;
                     Canvas.getCanvasElement().style.cursor = getActionCursor(hotspot);
-                    showDialogue('Used the item.', 3000);
+                    if (action.onAccept && action.onAccept.type !== 'none') {
+                        switch (action.onAccept.type) {
+                            case 'clue':
+                                if (action.onAccept.text) showDialogue(action.onAccept.text);
+                                else showDialogue(`Used ${usedItem ? usedItem.name : 'the item'}.`, 3000);
+                                break;
+                            case 'navigate':
+                                if (action.onAccept.target) {
+                                    AudioManager.stopSounds();
+                                    LoopAnimator.stop();
+                                    SceneManager.switchScene(action.onAccept.target);
+                                    LoopAnimator.startScene(HotspotEditor.getHotspots());
+                                    const targetScene = SceneManager.getScene(action.onAccept.target);
+                                    if (targetScene) AudioManager.playMusic(targetScene.music);
+                                }
+                                break;
+                            case 'pickup':
+                                if (action.onAccept.itemId) {
+                                    GameState.addToInventory(action.onAccept.itemId);
+                                    const ri = InventoryEditor.getItem(action.onAccept.itemId);
+                                    showDialogue(`Picked up: ${ri ? ri.name : action.onAccept.itemId}`, 3000);
+                                }
+                                break;
+                            case 'puzzle':
+                                if (action.onAccept.puzzleId) {
+                                    const pz = PuzzleEditor.getPuzzle(action.onAccept.puzzleId);
+                                    if (pz) openPuzzleOverlay(pz, hotspot);
+                                }
+                                break;
+                        }
+                    } else {
+                        showDialogue(`Used ${usedItem ? usedItem.name : 'the item'}.`, 3000);
+                    }
                 } else {
                     actionSucceeded = false;
                     showDialogue("That didn't work", 3000);
@@ -1100,30 +1369,34 @@ const PlayMode = (() => {
                 break;
         }
 
-        // Asset change — hide or show scene asset
-        if (actionSucceeded && hotspot.assetChange && hotspot.assetChange.assetId) {
-            const acMode = hotspot.assetChange.mode || 'hide';
-            const acId = hotspot.assetChange.assetId;
+        // Asset changes — hide or show scene/puzzle assets
+        const acList = hotspot.assetChanges || (hotspot.assetChange ? [hotspot.assetChange] : []);
+        if (actionSucceeded && acList.length > 0) {
             const scene = SceneManager.getCurrentScene();
-            const acAsset = scene ? (scene.sceneAssets || []).find(a => a.id === acId) : null;
+            for (const ac of acList) {
+                if (!ac.assetId) continue;
+                const acMode = ac.mode || 'hide';
+                const acId = ac.assetId;
+                const acAsset = scene ? (scene.sceneAssets || []).find(a => a.id === acId) : null;
 
-            if (acAsset && acAsset.transition === 'fade') {
-                if (acMode === 'show') {
-                    GameState.restoreAsset(acId);
-                    Canvas.fadeAsset(acId, 0, 1, 500);
+                if (acAsset && acAsset.transition === 'fade') {
+                    if (acMode === 'show') {
+                        GameState.restoreAsset(acId);
+                        Canvas.fadeAsset(acId, 0, 1, 500);
+                    } else {
+                        Canvas.fadeAsset(acId, 1, 0, 500, () => {
+                            GameState.removeAsset(acId);
+                            Canvas.render();
+                        });
+                    }
                 } else {
-                    Canvas.fadeAsset(acId, 1, 0, 500, () => {
+                    if (acMode === 'show') {
+                        GameState.restoreAsset(acId);
+                    } else {
                         GameState.removeAsset(acId);
-                        Canvas.render();
-                    });
+                    }
+                    Canvas.render();
                 }
-            } else {
-                if (acMode === 'show') {
-                    GameState.restoreAsset(acId);
-                } else {
-                    GameState.removeAsset(acId);
-                }
-                Canvas.render();
             }
         }
 
@@ -1169,16 +1442,19 @@ const PlayMode = (() => {
             if (scene) {
                 const srcBBox = getHotspotBBox(hotspot);
                 const srcItemId = action.type === 'pickup' ? action.itemId : null;
-                const srcAssetId = hotspot.assetChange ? hotspot.assetChange.assetId : null;
+                const srcAssetIds = (hotspot.assetChanges || (hotspot.assetChange ? [hotspot.assetChange] : [])).map(a => a.assetId).filter(Boolean);
                 for (const state of scene.states) {
                     for (const hs of (state.hotspots || [])) {
                         if (hs.id === hotspot.id) continue;
                         const sameItem = srcItemId && hs.action && hs.action.type === 'pickup' && hs.action.itemId === srcItemId;
-                        const sameAsset = srcAssetId && hs.assetChange && hs.assetChange.assetId === srcAssetId;
+                        const hsAssetIds = (hs.assetChanges || (hs.assetChange ? [hs.assetChange] : [])).map(a => a.assetId).filter(Boolean);
+                        const sameAsset = srcAssetIds.length > 0 && hsAssetIds.some(id => srcAssetIds.includes(id));
                         if ((sameItem || sameAsset) && bboxOverlap(srcBBox, getHotspotBBox(hs))) {
                             GameState.clearHotspot(hs.id);
-                            if (hs.assetChange && hs.assetChange.assetId && (hs.assetChange.mode || 'hide') === 'hide') {
-                                GameState.removeAsset(hs.assetChange.assetId);
+                            for (const hsAc of (hs.assetChanges || (hs.assetChange ? [hs.assetChange] : []))) {
+                                if (hsAc.assetId && (hsAc.mode || 'hide') === 'hide') {
+                                    GameState.removeAsset(hsAc.assetId);
+                                }
                             }
                         }
                     }
@@ -1299,5 +1575,5 @@ const PlayMode = (() => {
         return pickMode !== null;
     }
 
-    return { enter, exit, isActive, isPickMode, exitPickMode, getHoveredHotspot, init, showDialogue, openPuzzleOverlay, closePuzzleOverlay, openInventoryOverlay, closeInventoryOverlay, isWheelOpen, closeRadialWheel };
+    return { enter, exit, isActive, isPickMode, exitPickMode, getHoveredHotspot, init, showDialogue, openPuzzleOverlay, closePuzzleOverlay, openInventoryOverlay, closeInventoryOverlay, isWheelOpen, closeRadialWheel, getSelectedItem, clearSelectedItem };
 })();
