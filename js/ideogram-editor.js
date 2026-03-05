@@ -859,25 +859,11 @@ const IdeogramEditor = (() => {
     // Load image via fetch → blob URL to avoid tainting the canvas on export
     function loadImageClean(src, callback) {
         if (!src) return;
-        if (src.startsWith('data:') || src.startsWith('blob:')) {
-            const img = new Image();
-            img.onload = () => callback(img);
-            img.src = src;
-            return;
-        }
-        fetch(src)
-            .then(r => r.blob())
-            .then(blob => {
-                const img = new Image();
-                img.onload = () => callback(img);
-                img.src = URL.createObjectURL(blob);
-            })
-            .catch(() => {
-                // Fallback: load directly (may taint canvas)
-                const img = new Image();
-                img.onload = () => callback(img);
-                img.src = src;
-            });
+        const cached = typeof Preloader !== 'undefined' && Preloader.getImage(src);
+        if (cached) { callback(cached); return; }
+        const img = new Image();
+        img.onload = () => callback(img);
+        img.src = src;
     }
 
     function loadRuinImage(ruinId) {

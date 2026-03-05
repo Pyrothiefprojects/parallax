@@ -60,6 +60,32 @@ const Preloader = (() => {
             }
         }
 
+        // Ideogram ruin, codex, isopress, and isolathe images
+        if (data.ideograms) {
+            for (const ig of data.ideograms) {
+                if (ig.ruinLibrary) {
+                    for (const r of ig.ruinLibrary) {
+                        if (r.image) urls.add(r.image);
+                    }
+                }
+                if (ig.codices) {
+                    for (const c of ig.codices) {
+                        if (c.image) urls.add(c.image);
+                    }
+                }
+                if (ig.isopresses) {
+                    for (const p of ig.isopresses) {
+                        if (p.image) urls.add(p.image);
+                    }
+                }
+                if (ig.isolathes) {
+                    for (const l of ig.isolathes) {
+                        if (l.image) urls.add(l.image);
+                    }
+                }
+            }
+        }
+
         return urls;
     }
 

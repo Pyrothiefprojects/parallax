@@ -60,6 +60,34 @@ On load, the preloader scans all asset URLs from `window.PARALLAX_PROJECT`, prel
 - **Repo:** [Pyrothiefprojects/parallax](https://github.com/Pyrothiefprojects/parallax)
 - Hosted via GitHub Pages
 
+## Image Loading Convention
+
+All image loading in this codebase uses the same pattern — **always use this, never use `fetch` or blob URLs**:
+
+```js
+const cached = typeof Preloader !== 'undefined' && Preloader.getImage(src);
+if (cached) { callback(cached); return; }
+const img = new Image();
+img.onload = () => callback(img);
+img.src = src;
+```
+
+Or as a Promise (used in `canvas.js`):
+
+```js
+const img = new Image();
+img.onload = () => resolve(img);
+img.onerror = reject;
+img.src = src;
+```
+
+**Rules:**
+- Check `Preloader.getImage(src)` first if a callback is available — avoids redundant loads
+- Set `img.src` directly — no `fetch`, no `URL.createObjectURL`, no blob conversion
+- If a new image type is added, register its URLs in `Preloader.collectUrls()` so it gets preloaded at startup
+
+The Preloader loads all images before the game starts. Any image not registered there will load on-demand — which works but causes a pop-in delay the first time it's needed.
+
 ## Dev Setup
 - VS Code with Claude Code extension
 - GitHub for version control and hosting
