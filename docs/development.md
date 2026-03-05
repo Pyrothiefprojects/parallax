@@ -143,6 +143,70 @@ The ideogram console is a composed interactive display that the player uses to a
 
 **TODO:** Runtime ruin loading — currently ruins are pre-loaded in the editor. Need a mechanism for the player to load ruins onto the spindial in-game, which then populates empty codex slots and makes them visible on the corresponding isopresses.
 
+## Puzzle Design — Prismatic
+
+A light beam reflection puzzle built on the shared blueprint canvas. The designer creates beam routing challenges using sources, mirrors, filters, targets, and walls.
+
+**Elements:**
+- **Source** — emits a beam in a direction. Yellow circle with direction arrow. Drag the arrow tip handle to aim.
+- **Mirror** — reflects beams. Line segment that can be freely rotated via drag handle. Can be locked (fixed in play mode). Can be assigned a color — reflecting changes the beam to that color.
+- **Filter** — beam passes through without reflecting, but changes the beam color. Dashed line segment with diamond center indicator. Always has a color assigned.
+- **Target** — bullseye goal. Red when unhit, green when a beam reaches it. All targets must be hit to solve.
+- **Wall** — blocks beams. Two-click placement for start and end points.
+
+**Color system:**
+- Beams start as cyan (#00e5ff)
+- Mirrors can optionally be assigned a color from 7 presets (red, green, blue, yellow, magenta, orange, cyan)
+- Reflecting off a colored mirror changes the beam to that color
+- Passing through a filter changes the beam to the filter's color
+- Each beam segment renders in its current color with matching glow
+
+**Beam tracing algorithm:**
+- Ray cast from each source in its direction
+- Find nearest intersection with any mirror, filter, wall, or target
+- Mirror hit → reflect (angle of incidence = angle of reflection), optionally change color, continue
+- Filter hit → beam passes through in same direction, change color, continue
+- Wall hit → beam stops
+- Target hit → mark target as hit, beam stops
+- Max 50 bounces safety limit
+
+**Editor tools:** Select, Source, Mirror, Target, Wall, Filter, Delete
+
+**Config panels:**
+- Mirror: locked checkbox, length slider (30–160), color swatches (7 presets + none)
+- Filter: length slider (30–160), color swatches (7 presets, no "none" — filters always have a color)
+
+**Scramble:** Randomizes movable mirror angles. Player rotates mirrors to guide beams to all targets. Solved flash when all targets hit.
+
+## Puzzle Design — Clockwork
+
+A gear chain puzzle built on the shared blueprint canvas. The designer creates gear routing challenges where the player must place gears of the right sizes on pegs to connect a driver to an output.
+
+**Elements:**
+- **Peg** — an axle point where a gear can sit. Has a role: Normal, Driver, or Output. Only one driver and one output per puzzle.
+- **Gear** — sits on a peg. Has a configurable radius (15–60). Procedurally rendered with teeth, spokes, hub, and axle hole. Can be locked (stays during scramble).
+
+**Meshing:**
+- Two gears on adjacent pegs mesh when `|distance - (radius1 + radius2)| < 5px`
+- Meshing gears rotate in opposite directions
+- Speed scaled by gear ratio: `neighborSpeed = -parentSpeed * (parentRadius / neighborRadius)`
+
+**Chain detection:** BFS from driver peg through meshing neighbors. Connected gears spin; disconnected gears are static.
+
+**Gear rendering:**
+- Tooth count = `max(8, round(2π * radius / 10))`, tooth height = 6px
+- Alternating inner/outer radius points create gear silhouette
+- Spokes drawn for gears with radius > 25
+- Colors: Driver = green, Output = amber, Connected = blue-gray, Disconnected = dark gray
+
+**Scramble:** Removes unlocked gears from pegs into a pool area at the bottom of the canvas. Pool gears are rendered at 60% scale with radius labels. Player drags gears from pool onto empty pegs — snap when within 20px of peg center. Click a placed unlocked gear to pick it back up into the pool.
+
+**Solve check:** Pool empty AND output peg connected to driver through meshing gear chain.
+
+**Editor tools:** Select, Peg, Gear (toggle on/off), Delete
+
+**Config panel:** Role buttons (Normal/Driver/Output), Has Gear checkbox, Gear Radius slider, Locked checkbox.
+
 ## Known Issues
 - **Allow Delete checkboxes share state** — all Allow Delete toggles (Scenes, Inventory, Puzzles, Ideograms) control the same `delete-enabled` class on the panel body. Checking one enables delete buttons across all sections. Works in practice since only one section is visible at a time, but the puzzle/ideogram views share a panel — checking Allow Delete in one persists when toggling to the other.
 - **Puzzle asset delete button non-functional** — clicking the Delete button in the puzzle asset config popover does nothing. Likely cause: when a puzzle has a linked ideogram, `activateForPuzzle` sets the ideogram canvas to `pointer-events: auto` (ideogram-editor.js:4913), and the canvas sits on top of the asset layer in DOM order, potentially intercepting clicks. May also be a stale `activePuzzle`/`activeState` reference in PuzzleAssets. Needs investigation.
@@ -156,7 +220,9 @@ The engine is feature-complete for game creation — the current focus is buildi
 
 - **Ruin Codex** — the primary puzzle type, built using the ideogram editor. The ruin codex is designed to be a recurring puzzle mechanic reused across all stories. The codex tool (disc + spindial) is complete; remaining components are the IsoMark workspace, isopress, isolathe, and codex display.
 - **Isopress** — a smaller puzzle type, mostly built via the IsoMark compositor. Needs puzzle scene registration and asset type wiring.
-- **Third puzzle type** — TBD, one more smaller puzzle to round out the set.
+- **Ruinscope** — a node-swap untangle puzzle (inspired by WoW's Blingtron Circuit / Ley Line puzzles). Nodes arranged in a loop, each connected to exactly 2 neighbors. The solved state is a clean closed polygon with no line crossings. The scrambled state shuffles node positions so lines tangle. Click two nodes to swap them — their connections travel with them, redrawing lines from new positions. Red lines = crossing another line, blue/glowing lines = clean. All lines clean = solved. Pulsing feedback intensifies as crossings decrease. In-world context: power routing, ley line alignment, or circuit repair.
+- **Prismatic** — a light beam reflection puzzle. The designer places beam sources, mirrors, color filters, targets, and walls on a canvas. Beams trace from sources, reflect off mirrors, stop at walls, and hit targets. Mirrors can be assigned colors — reflecting a beam off a colored mirror changes the beam color. Filters are transparent segments the beam passes through (no reflection) that change the beam color. Scramble randomizes movable mirror angles; the player rotates mirrors to guide beams to all targets. In-world context: optics calibration, laser routing, light-based locks.
+- **Clockwork** — a gear chain puzzle. The designer places pegs (axle points) and gears of different sizes to create a mechanical chain from a driver gear to an output gear. Gears mesh when their edges touch (distance between peg centers ≈ sum of radii). Meshing gears rotate in opposite directions with speed scaled by gear ratio. Scramble removes unlocked gears into a pool; the player drags gears from the pool onto empty pegs to rebuild the chain. Solved when the output gear is connected to the driver through meshing gears. In-world context: engine repair, mechanical locks, power transmission.
 
 All inventory items and puzzle assets are lined up for the current puzzle set.
 
@@ -179,7 +245,13 @@ All inventory items and puzzle assets are lined up for the current puzzle set.
 - [ ] **Two-finger scroll rotation** — hover over a codex/spindial in dev lock mode and use two-finger trackpad scroll to rotate it (alternative to click-drag-rotate); uses the existing `wheel` event
 - [ ] **Isopress ruin auto-centering** — ruin symbols on the isopress plate are not visually centered because the ruin image content may not be centered within its image bounds. The code centers the image rectangle, but transparent padding causes the visible symbol to appear off-center, and the offset shifts at different rotation angles since rotation pivots around the image center rather than the content center. A content-bounds approach (`getImageData` to find non-transparent pixel bounds) was attempted but `getImageData` throws CORS errors when running without a server, which crashes the IdeogramEditor IIFE. Needs a CORS-safe solution — options: pre-compute content bounds during ruin library import (when the image is read via FileReader as dataURL, avoiding CORS), store the offset on the ruin library entry, or use a server-only fallback. Manual Ruin Offset X/Y sliders work as a temporary workaround.
 - [x] **Scale ruin images from original size** — "Original scale" checkbox in isopress config. When enabled, the Ruin Scale slider applies as a percentage of the image's native dimensions instead of fitting to the plate size. Each ruin retains its natural proportions and relative size differences.
+- [ ] **Build ruinMark items** — create the cryo ruinMark and engine ruinMark as inventory items with art assets. These are the physical cards the player finds and loads onto the spindial at the terminal. Needed before wiring up the terminal loading interaction.
+- [ ] **Terminal ruin loading interaction** — wire up the terminal puzzle so the player can use a ruinMark item on it to load the ruin onto the spindial. Consumes the ruinMark from inventory and adds the symbol to the persistent spindial ruin set.
+- [ ] **Spindial persistent ruin set** — the spindial's loaded ruins need to persist in GameState across scenes and puzzles. When the player loads a ruinMark onto the spindial at a terminal, the ruin set is saved. Any puzzle that uses the spindial (isopress, isolathe, ideogram console) should load from this saved set so the player can choose which ruin to press/lathe/view. The spindial is the player's portable ruin collection — it travels with them everywhere.
 - [ ] **Codex runtime state persistence** — the ideogram currently doesn't reflect its locked ruins at runtime. Need a way to save/load the state of codex slots (which ruins are loaded, their orientations) during gameplay so ruins can be added to the codex in-game and persist across scenes. Exact approach TBD.
+- [ ] **Prismatic scene integration** — wire prismatics for use in scenes as puzzle hotspots. The designer should be able to assign a prismatic to a puzzle panel so the player encounters the beam reflection puzzle in-game.
+- [ ] **Clockwork scene integration** — wire clockworks for use in scenes as puzzle hotspots. The designer should be able to assign a clockwork to a puzzle panel so the player encounters the gear chain puzzle in-game.
+- [ ] **Ruinscope scene integration** — wire ruinscopes for use in scenes as puzzle hotspots. The designer should be able to assign a ruinscope to a puzzle panel so the player encounters the untangle puzzle in-game. Needs: puzzle overlay rendering, solve detection triggering game state flags, and saving the solved state.
 - [ ] **Align file pickers with asset directories** — all file picker menus should save and load from the correct default directories for their asset type. Current mapping: scenes → `assets/scenes/`, items → `assets/items/`, puzzle backgrounds → `assets/puzzles/`, puzzle pieces (ruins, codex, spindial, plates) → `assets/puzzles/pieces/`, audio → `assets/audio/`, transitions → `assets/transitions/`. Each file picker should default to the appropriate directory for its context.
 
 ## Build Log
@@ -195,4 +267,5 @@ All inventory items and puzzle assets are lined up for the current puzzle set.
 - **Session 10:** Feb 19, ~6 hours — Codex coupling system (disc-orientation coupling rotates all unlocked ruins 90° on disc shift, linked spindial coupling rotates opposite ruin, mirror coupling flips unlocked ruins on disc shift), 3-tier difficulty (basic/medium/hard), per-slot lock controls (P locks slot content, O exempts from coupling, Pin fixes ruin to screen position), pin position with gate effects (gate rotate +90° and gate flip on ruin passing pinned position), smart greying logic (invalid combos auto-disabled), difficulty legend in config panel, smooth orientDragOffset animation for coupling during drag, unified codex/spindial config panel, documentation restructure (README split into docs/ folder with 5 linked pages)
 - **Session 11:** Feb 20, ~12 hours — Isopress overlay system (stable imageCache lookup via ruinLibrary matching instead of broken slotImageCache, visual top slot calculation using disc rotation for 12 o'clock position, rotation/mirror transform display on isopress), spindial topIndex fix (mousemove and snap target the visual 12 o'clock slot instead of hardcoded slots[0]), Isopress and Isolathe editor tools (place asset, convert, boundary box, config panel, save/load), cleanup (removed pressRuinCache, updateLinkedPresses, currentOverlay, reverted rebuildSlotImageCache to simple version), full naming convention rename (cypher→codex, press→isopress, lathe→isolathe, plate naming: blank_Mark/ruinMark/IsoPlate/IsoMark), size slider for codex/isopress/isolathe config panels, isopress ruin overlay scale/offset controls, documentation updates, forge machine scene construction with puzzle, **ideogram-to-puzzle integration** (activateForPuzzle/deactivateForPuzzle on overlay canvas, deep-copy arrays with image preloading, viewport offset for coordinate mapping, puzzle mode render path skipping editor-only elements, config panel z-index fix for puzzle overlay, mouse pass-through for missed clicks, editor state save/restore, puzzle ideogramState persistence, ideogram dropdown and remove button in puzzle tools panel, getContentBounds fix for codex/isopress/isolathe scroll clamping, Delete key support for all element types)
 - **Session 12:** Feb 23 — Isopress original scale mode ("Original scale" checkbox scales ruins from native image dimensions instead of plate-fit), puzzle asset uniform resize slider (replaced separate Width/Height inputs with single percentage-based Size slider preserving aspect ratio via originalWidth/originalHeight), puzzle asset CSS fix (`.puzzle-asset img { max-width: none }` — assets were resizing based on distance from container edge due to inherited `max-width: 100%` on absolutely positioned elements), ideogram multi-select (drag-to-select in select mode draws cyan dashed selection rect, center-point detection for codices/isopresses/isolathes, group drag with delta from start positions, Escape to clear), persistent element groups (floating Group/Ungroup button after multi-select, `groupId` property on elements, auto group-drag when clicking any grouped element finds all members by groupId, orange dot indicator on grouped elements, persists through save/load/puzzle mode via spread operator), codex runtime state persistence TODO
+- **Session 13:** Feb 24 — Prismatic puzzle editor (beam source/mirror/target/wall placement, ray casting beam tracing with reflection, glow rendering, scramble/reset, mirror config with locked/length, solved flash), Prismatic color system (color property on mirrors, filter element type with pass-through color change, per-segment beam color tracking, color swatches UI with 7 presets), Clockwork puzzle editor (peg/gear placement, procedural gear rendering with teeth/spokes/hub, mesh graph with distance-based gear meshing, BFS chain detection, rotation animation with gear ratios, gear pool with drag-to-snap placement, scramble/reset, peg config with role/radius/locked), toolbar integration for both (toggle buttons, 5-way mutual exclusion, card lists, export/import)
 - **Total build time:** ~83 hours (so far)

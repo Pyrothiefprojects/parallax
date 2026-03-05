@@ -1420,6 +1420,59 @@ window.PARALLAX_PROJECT ={
         "label": "ruinMark - engine",
         "color": "#ff6b35",
         "itemId": "ruinmark_1771833281688"
+      },
+      {
+        "id": "bp_element_1771930025081_fahu",
+        "type": "item",
+        "x": 760,
+        "y": 960,
+        "width": 40,
+        "height": 40,
+        "label": "ruinMark - navigation",
+        "color": "#ff6b35",
+        "itemId": "ruinmark_1771833281688"
+      },
+      {
+        "id": "bp_element_1771930034509_i44r",
+        "type": "item",
+        "x": 760,
+        "y": 880,
+        "width": 40,
+        "height": 40,
+        "label": "ruinMark - shields",
+        "color": "#ff6b35",
+        "itemId": "ruinmark_1771833281688"
+      },
+      {
+        "id": "bp_element_1771930042125_0e58",
+        "type": "item",
+        "x": 760,
+        "y": 800,
+        "width": 40,
+        "height": 40,
+        "label": "ruinMark - weapons",
+        "color": "#ff6b35",
+        "itemId": "ruinmark_1771833281688"
+      },
+      {
+        "id": "bp_element_1771930479763_7kl0",
+        "type": "perspective",
+        "x": 1280,
+        "y": 560,
+        "width": 40,
+        "height": 40,
+        "label": "",
+        "color": "#ffffff"
+      },
+      {
+        "id": "bp_element_1771930481596_o3y3",
+        "type": "perspective",
+        "x": 1440,
+        "y": 800,
+        "width": 40,
+        "height": 40,
+        "label": "",
+        "color": "#ffffff"
       }
     ],
     "viewport": {
@@ -1429,7 +1482,7 @@ window.PARALLAX_PROJECT ={
     },
     "metadata": {
       "created": 1771308000000,
-      "modified": 1771863312912
+      "modified": 1771930485993
     }
   },
   "ideogramData": {
@@ -1613,7 +1666,7 @@ window.PARALLAX_PROJECT ={
         },
         "metadata": {
           "created": 1771503169529,
-          "modified": 1771863283209
+          "modified": 1771930485994
         },
         "thumbnail": "assets/puzzles/pieces/Ideogram codex.png",
         "isopresses": [
@@ -1936,5 +1989,8 @@ window.PARALLAX_PROJECT ={
         "thumbnail": "assets/puzzles/pieces/Ideogram test.png"
       }
     ]
+  },
+  "ruinscopeData": {
+    "ruinscopes": []
   }
 };

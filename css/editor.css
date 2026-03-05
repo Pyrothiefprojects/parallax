@@ -2031,6 +2031,7 @@ body {
     background: var(--bg-input);
     border: 1px solid var(--border-fire);
     border-radius: 4px;
+    color: var(--text-primary);
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -2712,5 +2713,87 @@ body {
     left: 2px;
     right: 2px;
     min-height: 30px;
+}
+
+/* ========== Ruinscope Editor ========== */
+
+.ruinscope-scramble-btn {
+    background: var(--accent-rust) !important;
+    color: var(--text-primary) !important;
+}
+
+.ruinscope-scramble-btn:hover {
+    background: var(--accent-orange) !important;
+}
+
+.ruinscope-reset-btn {
+    background: #333 !important;
+    color: var(--text-secondary) !important;
+}
+
+.ruinscope-reset-btn:hover {
+    background: #444 !important;
+    color: var(--text-primary) !important;
+}
+
+.ruinscope-rule-btn {
+    font-size: 10px !important;
+    padding: 3px 8px !important;
+    background: #222 !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+.ruinscope-rule-btn:hover {
+    background: #333 !important;
+    color: var(--text-primary) !important;
+}
+
+.ruinscope-rule-btn.active {
+    background: var(--accent-rust) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--accent-orange) !important;
+}
+
+/* ========== Prismatic Editor ========== */
+
+.prismatic-scramble-btn {
+    background: var(--accent-rust) !important;
+    color: var(--text-primary) !important;
+}
+
+.prismatic-scramble-btn:hover {
+    background: var(--accent-orange) !important;
+}
+
+.prismatic-reset-btn {
+    background: #333 !important;
+    color: var(--text-secondary) !important;
+}
+
+.prismatic-reset-btn:hover {
+    background: #444 !important;
+    color: var(--text-primary) !important;
+}
+
+/* ========== Clockwork Editor ========== */
+
+.clockwork-scramble-btn {
+    background: var(--accent-rust) !important;
+    color: var(--text-primary) !important;
+}
+
+.clockwork-scramble-btn:hover {
+    background: var(--accent-orange) !important;
+}
+
+.clockwork-reset-btn {
+    background: #333 !important;
+    color: var(--text-secondary) !important;
+}
+
+.clockwork-reset-btn:hover {
+    background: #444 !important;
+    color: var(--text-primary) !important;
 }
 

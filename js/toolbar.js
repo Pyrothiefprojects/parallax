@@ -135,6 +135,9 @@ const Toolbar = (() => {
                     <div class="panel-section visible" data-panel="puzzle">
                         <div class="gamestate-mode-toggle">
                             <button id="ideogram-toggle" class="panel-btn">Ideogram</button>
+                            <button id="ruinscope-toggle" class="panel-btn">Ruinscope</button>
+                            <button id="prismatic-toggle" class="panel-btn">Prismatic</button>
+                            <button id="clockwork-toggle" class="panel-btn">Clockwork</button>
                         </div>
                         <div id="puzzle-standard-view">
                             <div class="scene-panel-top">
@@ -164,6 +167,42 @@ const Toolbar = (() => {
                                 </label>
                             </div>
                         </div>
+                        <div id="ruinscope-view" class="hidden">
+                            <div class="scene-panel-top" style="margin-bottom:6px;">
+                                <span class="panel-label">Ruinscopes</span>
+                                <button id="ruinscope-new" class="panel-btn primary">+ New</button>
+                            </div>
+                            <div id="ruinscope-card-list" class="scene-list"></div>
+                            <div class="overlay-toggle-row" style="margin-top:8px;">
+                                <label class="overlay-master-label">
+                                    <input type="checkbox" id="ruinscope-allow-delete-toggle"> Allow Delete
+                                </label>
+                            </div>
+                        </div>
+                        <div id="prismatic-view" class="hidden">
+                            <div class="scene-panel-top" style="margin-bottom:6px;">
+                                <span class="panel-label">Prismatics</span>
+                                <button id="prismatic-new" class="panel-btn primary">+ New</button>
+                            </div>
+                            <div id="prismatic-card-list" class="scene-list"></div>
+                            <div class="overlay-toggle-row" style="margin-top:8px;">
+                                <label class="overlay-master-label">
+                                    <input type="checkbox" id="prismatic-allow-delete-toggle"> Allow Delete
+                                </label>
+                            </div>
+                        </div>
+                        <div id="clockwork-view" class="hidden">
+                            <div class="scene-panel-top" style="margin-bottom:6px;">
+                                <span class="panel-label">Clockworks</span>
+                                <button id="clockwork-new" class="panel-btn primary">+ New</button>
+                            </div>
+                            <div id="clockwork-card-list" class="scene-list"></div>
+                            <div class="overlay-toggle-row" style="margin-top:8px;">
+                                <label class="overlay-master-label">
+                                    <input type="checkbox" id="clockwork-allow-delete-toggle"> Allow Delete
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 `;
             },
@@ -180,6 +219,16 @@ const Toolbar = (() => {
                     document.getElementById('float-panel-body').classList.toggle('delete-enabled', ideogramDeleteToggle.checked);
                 });
 
+                const ruinscopeDeleteToggle = document.getElementById('ruinscope-allow-delete-toggle');
+                ruinscopeDeleteToggle.addEventListener('change', () => {
+                    document.getElementById('float-panel-body').classList.toggle('delete-enabled', ruinscopeDeleteToggle.checked);
+                });
+
+                const prismaticDeleteToggle = document.getElementById('prismatic-allow-delete-toggle');
+                prismaticDeleteToggle.addEventListener('change', () => {
+                    document.getElementById('float-panel-body').classList.toggle('delete-enabled', prismaticDeleteToggle.checked);
+                });
+
                 // Ideogram toggle
                 const ideogramToggle = document.getElementById('ideogram-toggle');
                 const ideogramView = document.getElementById('ideogram-view');
@@ -192,6 +241,21 @@ const Toolbar = (() => {
                         puzzleStandardView.classList.remove('hidden');
                         ideogramView.classList.add('hidden');
                     } else {
+                        if (RuinscopeEditor.isActive()) {
+                            RuinscopeEditor.deactivate();
+                            ruinscopeToggle.textContent = 'Ruinscope';
+                            ruinscopeView.classList.add('hidden');
+                        }
+                        if (PrismaticEditor.isActive()) {
+                            PrismaticEditor.deactivate();
+                            prismaticToggle.textContent = 'Prismatic';
+                            prismaticView.classList.add('hidden');
+                        }
+                        if (ClockworkEditor.isActive()) {
+                            ClockworkEditor.deactivate();
+                            clockworkToggle.textContent = 'Clockwork';
+                            clockworkView.classList.add('hidden');
+                        }
                         IdeogramEditor.activate();
                         ideogramToggle.textContent = 'Scene';
                         puzzleStandardView.classList.add('hidden');
@@ -203,6 +267,123 @@ const Toolbar = (() => {
                 document.getElementById('ideogram-new').addEventListener('click', () => {
                     IdeogramEditor.createIdeogram('Untitled');
                     refreshIdeogramList();
+                });
+
+                // Ruinscope toggle
+                const ruinscopeToggle = document.getElementById('ruinscope-toggle');
+                const ruinscopeView = document.getElementById('ruinscope-view');
+
+                ruinscopeToggle.addEventListener('click', () => {
+                    if (RuinscopeEditor.isActive()) {
+                        RuinscopeEditor.deactivate();
+                        ruinscopeToggle.textContent = 'Ruinscope';
+                        puzzleStandardView.classList.remove('hidden');
+                        ruinscopeView.classList.add('hidden');
+                    } else {
+                        if (IdeogramEditor.isActive()) {
+                            IdeogramEditor.deactivate();
+                            ideogramToggle.textContent = 'Ideogram';
+                            ideogramView.classList.add('hidden');
+                        }
+                        if (PrismaticEditor.isActive()) {
+                            PrismaticEditor.deactivate();
+                            prismaticToggle.textContent = 'Prismatic';
+                            prismaticView.classList.add('hidden');
+                        }
+                        if (ClockworkEditor.isActive()) {
+                            ClockworkEditor.deactivate();
+                            clockworkToggle.textContent = 'Clockwork';
+                            clockworkView.classList.add('hidden');
+                        }
+                        RuinscopeEditor.activate();
+                        ruinscopeToggle.textContent = 'Scene';
+                        puzzleStandardView.classList.add('hidden');
+                        ruinscopeView.classList.remove('hidden');
+                        refreshRuinscopeList();
+                    }
+                });
+
+                document.getElementById('ruinscope-new').addEventListener('click', () => {
+                    RuinscopeEditor.createRuinscope('Untitled');
+                    refreshRuinscopeList();
+                });
+
+                // Prismatic toggle
+                const prismaticToggle = document.getElementById('prismatic-toggle');
+                const prismaticView = document.getElementById('prismatic-view');
+
+                prismaticToggle.addEventListener('click', () => {
+                    if (PrismaticEditor.isActive()) {
+                        PrismaticEditor.deactivate();
+                        prismaticToggle.textContent = 'Prismatic';
+                        puzzleStandardView.classList.remove('hidden');
+                        prismaticView.classList.add('hidden');
+                    } else {
+                        if (IdeogramEditor.isActive()) {
+                            IdeogramEditor.deactivate();
+                            ideogramToggle.textContent = 'Ideogram';
+                            ideogramView.classList.add('hidden');
+                        }
+                        if (RuinscopeEditor.isActive()) {
+                            RuinscopeEditor.deactivate();
+                            ruinscopeToggle.textContent = 'Ruinscope';
+                            ruinscopeView.classList.add('hidden');
+                        }
+                        if (ClockworkEditor.isActive()) {
+                            ClockworkEditor.deactivate();
+                            clockworkToggle.textContent = 'Clockwork';
+                            clockworkView.classList.add('hidden');
+                        }
+                        PrismaticEditor.activate();
+                        prismaticToggle.textContent = 'Scene';
+                        puzzleStandardView.classList.add('hidden');
+                        prismaticView.classList.remove('hidden');
+                        refreshPrismaticList();
+                    }
+                });
+
+                document.getElementById('prismatic-new').addEventListener('click', () => {
+                    PrismaticEditor.createPrismatic('Untitled');
+                    refreshPrismaticList();
+                });
+
+                // Clockwork toggle
+                const clockworkToggle = document.getElementById('clockwork-toggle');
+                const clockworkView = document.getElementById('clockwork-view');
+
+                clockworkToggle.addEventListener('click', () => {
+                    if (ClockworkEditor.isActive()) {
+                        ClockworkEditor.deactivate();
+                        clockworkToggle.textContent = 'Clockwork';
+                        puzzleStandardView.classList.remove('hidden');
+                        clockworkView.classList.add('hidden');
+                    } else {
+                        if (IdeogramEditor.isActive()) {
+                            IdeogramEditor.deactivate();
+                            ideogramToggle.textContent = 'Ideogram';
+                            ideogramView.classList.add('hidden');
+                        }
+                        if (RuinscopeEditor.isActive()) {
+                            RuinscopeEditor.deactivate();
+                            ruinscopeToggle.textContent = 'Ruinscope';
+                            ruinscopeView.classList.add('hidden');
+                        }
+                        if (PrismaticEditor.isActive()) {
+                            PrismaticEditor.deactivate();
+                            prismaticToggle.textContent = 'Prismatic';
+                            prismaticView.classList.add('hidden');
+                        }
+                        ClockworkEditor.activate();
+                        clockworkToggle.textContent = 'Scene';
+                        puzzleStandardView.classList.add('hidden');
+                        clockworkView.classList.remove('hidden');
+                        refreshClockworkList();
+                    }
+                });
+
+                document.getElementById('clockwork-new').addEventListener('click', () => {
+                    ClockworkEditor.createClockwork('Untitled');
+                    refreshClockworkList();
                 });
             }
         },
@@ -228,12 +409,12 @@ const Toolbar = (() => {
                 return `
                     <div class="panel-section visible" data-panel="gamestate">
                         <div class="gamestate-mode-toggle">
-                            <button id="blueprint-toggle" class="panel-btn">Blueprint</button>
+                            <button id="blueprint-toggle" class="panel-btn">Game State</button>
                         </div>
-                        <div id="blueprint-view" class="hidden">
+                        <div id="blueprint-view">
                             <div id="blueprint-elements-list" class="blueprint-list"></div>
                         </div>
-                        <div id="gamestate-standard-view">
+                        <div id="gamestate-standard-view" class="hidden">
                         <div class="gamestate-columns">
                             <div class="gamestate-col">
                                 <div class="gamestate-col-header">
@@ -259,6 +440,10 @@ const Toolbar = (() => {
                 const blueprintToggle = document.getElementById('blueprint-toggle');
                 const blueprintView = document.getElementById('blueprint-view');
                 const standardView = document.getElementById('gamestate-standard-view');
+
+                // Default to blueprint view
+                BlueprintEditor.activate();
+                refreshBlueprintList();
 
                 blueprintToggle.addEventListener('click', () => {
                     if (BlueprintEditor.isActive()) {
@@ -415,6 +600,9 @@ const Toolbar = (() => {
         if (name !== 'image') ImageEditor.deactivate();
         if (name !== 'gamestate' && BlueprintEditor.isActive()) BlueprintEditor.deactivate();
         if (name !== 'puzzle' && IdeogramEditor.isActive()) IdeogramEditor.deactivate();
+        if (name !== 'puzzle' && RuinscopeEditor.isActive()) RuinscopeEditor.deactivate();
+        if (name !== 'puzzle' && PrismaticEditor.isActive()) PrismaticEditor.deactivate();
+        if (name !== 'puzzle' && ClockworkEditor.isActive()) ClockworkEditor.deactivate();
         activeSection = name;
         sectionButtons.forEach(btn => {
             btn.classList.toggle('active', btn.dataset.section === name);
@@ -551,7 +739,10 @@ const Toolbar = (() => {
                 gameState: GameState.getDefinedFlags(),
                 progressionSteps: GameState.getSteps(),
                 blueprint: BlueprintEditor.getBlueprintData(),
-                ideogramData: IdeogramEditor.getIdeogramData()
+                ideogramData: IdeogramEditor.getIdeogramData(),
+                ruinscopeData: RuinscopeEditor.getRuinscopeData(),
+                prismaticData: PrismaticEditor.getPrismaticData(),
+                clockworkData: ClockworkEditor.getClockworkData()
             };
             const clean = stripDataUrls(data);
             const js = 'window.PARALLAX_PROJECT =' + JSON.stringify(clean, null, 2) + ';\n';
@@ -683,5 +874,151 @@ const Toolbar = (() => {
         });
     }
 
-    return { init, openSection, closePanel, isEditMode, enterEditMode, enterPlayMode, refreshBlueprintList, refreshIdeogramList };
+    function refreshRuinscopeList() {
+        const container = document.getElementById('ruinscope-card-list');
+        if (!container || typeof RuinscopeEditor === 'undefined') return;
+        const ruinscopes = RuinscopeEditor.getAllRuinscopes();
+        const currentId = RuinscopeEditor.getCurrentRuinscopeId();
+
+        if (ruinscopes.length === 0) {
+            container.innerHTML = '<span class="panel-label" style="color:var(--text-secondary); padding:8px 0;">No ruinscopes yet.</span>';
+            return;
+        }
+
+        container.innerHTML = ruinscopes.map(rs => {
+            const nodeCount = (rs.nodes || []).length;
+            const edgeCount = (rs.edges || []).length;
+            return `
+            <div class="scene-card ${rs.id === currentId ? 'active' : ''}" data-id="${rs.id}">
+                <div class="scene-card-info" style="flex:1;">
+                    <input class="scene-card-name" value="${rs.name || 'Untitled'}" data-id="${rs.id}" spellcheck="false">
+                    <span class="scene-card-meta">${nodeCount} node${nodeCount !== 1 ? 's' : ''}, ${edgeCount} edge${edgeCount !== 1 ? 's' : ''}</span>
+                </div>
+                <button class="scene-card-delete" data-id="${rs.id}">&times;</button>
+            </div>
+        `}).join('');
+
+        container.querySelectorAll('.scene-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('.scene-card-delete') || e.target.classList.contains('scene-card-name')) return;
+                RuinscopeEditor.switchRuinscope(card.dataset.id);
+                refreshRuinscopeList();
+            });
+        });
+
+        container.querySelectorAll('.scene-card-name').forEach(input => {
+            input.addEventListener('change', () => {
+                const rs = RuinscopeEditor.getAllRuinscopes().find(r => r.id === input.dataset.id);
+                if (rs) rs.name = input.value.trim();
+            });
+        });
+
+        container.querySelectorAll('.scene-card-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                RuinscopeEditor.deleteRuinscope(btn.dataset.id);
+                refreshRuinscopeList();
+            });
+        });
+    }
+
+    function refreshPrismaticList() {
+        const container = document.getElementById('prismatic-card-list');
+        if (!container || typeof PrismaticEditor === 'undefined') return;
+        const prismatics = PrismaticEditor.getAllPrismatics();
+        const currentId = PrismaticEditor.getCurrentPrismaticId();
+
+        if (prismatics.length === 0) {
+            container.innerHTML = '<span class="panel-label" style="color:var(--text-secondary); padding:8px 0;">No prismatics yet.</span>';
+            return;
+        }
+
+        container.innerHTML = prismatics.map(p => {
+            const srcCount = (p.sources || []).length;
+            const mirCount = (p.mirrors || []).length;
+            const filCount = (p.filters || []).length;
+            const tgtCount = (p.targets || []).length;
+            return `
+            <div class="scene-card ${p.id === currentId ? 'active' : ''}" data-id="${p.id}">
+                <div class="scene-card-info" style="flex:1;">
+                    <input class="scene-card-name" value="${p.name || 'Untitled'}" data-id="${p.id}" spellcheck="false">
+                    <span class="scene-card-meta">${srcCount} src, ${mirCount} mir, ${filCount} fil, ${tgtCount} tgt</span>
+                </div>
+                <button class="scene-card-delete" data-id="${p.id}">&times;</button>
+            </div>
+        `}).join('');
+
+        container.querySelectorAll('.scene-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('.scene-card-delete') || e.target.classList.contains('scene-card-name')) return;
+                PrismaticEditor.switchPrismatic(card.dataset.id);
+                refreshPrismaticList();
+            });
+        });
+
+        container.querySelectorAll('.scene-card-name').forEach(input => {
+            input.addEventListener('change', () => {
+                const p = PrismaticEditor.getAllPrismatics().find(r => r.id === input.dataset.id);
+                if (p) p.name = input.value.trim();
+            });
+        });
+
+        container.querySelectorAll('.scene-card-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                PrismaticEditor.deletePrismatic(btn.dataset.id);
+                refreshPrismaticList();
+            });
+        });
+    }
+
+    function refreshClockworkList() {
+        const container = document.getElementById('clockwork-card-list');
+        if (!container || typeof ClockworkEditor === 'undefined') return;
+        const clockworks = ClockworkEditor.getAllClockworks();
+        const currentId = ClockworkEditor.getCurrentClockworkId();
+
+        if (clockworks.length === 0) {
+            container.innerHTML = '<span class="panel-label" style="color:var(--text-secondary); padding:8px 0;">No clockworks yet.</span>';
+            return;
+        }
+
+        container.innerHTML = clockworks.map(cw => {
+            const pegCount = (cw.pegs || []).length;
+            const gearCount = (cw.pegs || []).filter(p => p.hasGear).length;
+            return `
+            <div class="scene-card ${cw.id === currentId ? 'active' : ''}" data-id="${cw.id}">
+                <div class="scene-card-info" style="flex:1;">
+                    <input class="scene-card-name" value="${cw.name || 'Untitled'}" data-id="${cw.id}" spellcheck="false">
+                    <span class="scene-card-meta">${pegCount} peg${pegCount !== 1 ? 's' : ''}, ${gearCount} gear${gearCount !== 1 ? 's' : ''}</span>
+                </div>
+                <button class="scene-card-delete" data-id="${cw.id}">&times;</button>
+            </div>
+        `}).join('');
+
+        container.querySelectorAll('.scene-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('.scene-card-delete') || e.target.classList.contains('scene-card-name')) return;
+                ClockworkEditor.switchClockwork(card.dataset.id);
+                refreshClockworkList();
+            });
+        });
+
+        container.querySelectorAll('.scene-card-name').forEach(input => {
+            input.addEventListener('change', () => {
+                const cw = ClockworkEditor.getAllClockworks().find(c => c.id === input.dataset.id);
+                if (cw) cw.name = input.value.trim();
+            });
+        });
+
+        container.querySelectorAll('.scene-card-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                ClockworkEditor.deleteClockwork(btn.dataset.id);
+                refreshClockworkList();
+            });
+        });
+    }
+
+    return { init, openSection, closePanel, isEditMode, enterEditMode, enterPlayMode, refreshBlueprintList, refreshIdeogramList, refreshRuinscopeList, refreshPrismaticList, refreshClockworkList };
 })();

@@ -10,7 +10,7 @@ You're the last one awake. Power is failing. 10,000 people in cryo stasis depend
 |---|------|----------|
 | 1 | **Cryo Pod Room** | Scanning console, your cryo pod, other pods |
 | 2 | **Loading Bay** | Isopress, Isolathe, three doors (cryo, engine shaft, one more) |
-| 3 | **Operations** | Terminal, three-slot machine (one per cryo pod, one light on), kinetic power device, cryo ruinMark, engine ruinMark |
+| 3 | **Operations** | Terminal with ideogram console (codex + spindial + transparent isopresses), three-slot machine (one per cryo pod, one light on), kinetic power device, cryo ruinMark, engine ruinMark |
 | 4 | **Engine Shaft** | Corridor connecting cryo to its engine |
 | 5 | **Engine Room** | Generator with cracked IsoMark (both halves damaged — junk) |
 
@@ -30,8 +30,9 @@ You're the last one awake. Power is failing. 10,000 people in cryo stasis depend
 
 - **Spindial = doors.** Always. No exceptions. IsoMarks do not open doors.
 - **IsoMarks = systems.** Plug into machines to operate them.
-- **Isopress** forges IsoMarks (ruinMark + IsoPlate). Player chooses orientation. Only symbols loaded on the spindial are available at the press.
-- **Isolathe** disassembles IsoMarks → ruinMark + blank IsoPlate. The IsoPlate always comes out blank (symbol wiped).
+- **Spindial ruin set is persistent** — ruins loaded onto the spindial at a terminal are saved to the player's state. The spindial carries its ruin collection across scenes and puzzles.
+- **Isopress** forges IsoMarks (ruinMark + IsoPlate). Player chooses orientation. Loads from the saved spindial — only ruins the player has collected are available to press.
+- **Isolathe** disassembles IsoMarks → ruinMark + blank IsoPlate. The IsoPlate always comes out blank (symbol wiped). Loads from the saved spindial to select which ruin to separate.
 - **Terminal** displays loaded plates or all symbols on the spindial.
 - **RuinMarks are square** — you cannot determine correct orientation by looking at them.
 - **Orientation matters** — wrong orientation on the spindial won't open doors. The ideogram/meta map requires correct orientations.
@@ -54,7 +55,7 @@ Player enters the loading bay. No power to machinery. Three doors — came from 
 
 ### Operations
 
-Player enters operations. Powers the room with kinetic device. Finds cryo ruinMark and engine ruinMark. The terminal can show symbols from the spindial and display loaded plates. Player learns about orientations here — the cryo ruinMark serves as tutorial/practice material.
+Player enters operations. Powers the room with kinetic device. Finds cryo ruinMark and engine ruinMark. The terminal contains the ideogram console — the codex disc, spindial, and transparent isopresses arranged to show the ideogram puzzle. The player will load ruinMarks onto the spindial here, and they'll reflect onto the codex and isopresses as they're added. Player learns about orientations here — the cryo ruinMark serves as tutorial/practice material.
 
 Player loads engine ruin onto spindial at the terminal.
 
@@ -66,7 +67,7 @@ Player forges cryo IsoMark at the Isopress (cryo ruinMark + blank IsoPlate, choo
 
 ### Engine Shaft
 
-The engine symbol is visible on the engine door — this is the orientation clue. Player must have the engine symbol on the spindial with the correct orientation. Spindial opens the engine shaft door. Player traverses the corridor.
+**TBD — method for gaining entry to the engine shaft is undecided.** Player traverses the corridor.
 
 ### Engine Room
 
@@ -89,6 +90,10 @@ Player forges cryo IsoMark (cryo ruinMark + blank IsoPlate, chooses orientation)
 ### Meta Map
 
 Player uses the terminal to arrange and orient all symbols on the spindial. The correct arrangement and orientations form the ideogram — the meta map puzzle that spans the entire game. Cryo's symbols are the first pieces.
+
+### Exit — Call for Transport
+
+With power restored and the meta map in progress, the player's final objective is to leave the cryo facility. The player must call for transport using a comms system and open the loading bay door. Opening the bay door is how the player exits this episode.
 
 ## Item Inventory
 
@@ -165,9 +170,12 @@ Puzzle editor:
 
 
 ## Open Questions
-t
+
 - What forces the player to forge the cryo IsoMark before the engine IsoMark?
 - What are the orientation clues for the cryo symbol?
 - What does the three-slot machine do when the cryo IsoMark is inserted?
+- How does the player gain entry to the engine shaft?
 - The circle on the desk in operations is the spindial dock — place the spindial there to interact with the kinetic power puzzle that generates temporary power to the room.
 - The third door in the loading bay leads to the engine shaft.
+- How does the player call for transport? What comms system do they use?
+- What triggers the bay door to open — is it a separate puzzle, a switch, or automatic after the call?

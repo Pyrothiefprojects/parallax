@@ -452,7 +452,10 @@ const SceneManager = (() => {
             gameState: GameState.getDefinedFlags(),
             progressionSteps: GameState.getSteps(),
             blueprint: BlueprintEditor.getBlueprintData(),
-            ideogramData: IdeogramEditor.getIdeogramData()
+            ideogramData: IdeogramEditor.getIdeogramData(),
+            ruinscopeData: RuinscopeEditor.getRuinscopeData(),
+            prismaticData: PrismaticEditor.getPrismaticData(),
+            clockworkData: ClockworkEditor.getClockworkData()
         };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -518,6 +521,15 @@ const SceneManager = (() => {
         }
         if (data.ideogramData) {
             IdeogramEditor.loadIdeogramData(data.ideogramData);
+        }
+        if (data.ruinscopeData) {
+            RuinscopeEditor.loadRuinscopeData(data.ruinscopeData);
+        }
+        if (data.prismaticData) {
+            PrismaticEditor.loadPrismaticData(data.prismaticData);
+        }
+        if (data.clockworkData) {
+            ClockworkEditor.loadClockworkData(data.clockworkData);
         }
         renderSceneList();
     }
