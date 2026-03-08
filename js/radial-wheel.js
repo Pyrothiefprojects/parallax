@@ -68,6 +68,7 @@ const RadialWheel = (() => {
                 el.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const id = item.id;
+                    onCloseCallback = null; // suppress onClose — this is a selection, not a dismiss
                     closeWheel();
                     onSelect(id);
                 });

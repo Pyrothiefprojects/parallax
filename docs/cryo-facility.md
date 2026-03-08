@@ -91,6 +91,34 @@ Player forges cryo IsoMark (cryo ruinMark + blank IsoPlate, chooses orientation)
 
 Player uses the terminal to arrange and orient all symbols on the spindial. The correct arrangement and orientations form the ideogram — the meta map puzzle that spans the entire game. Cryo's symbols are the first pieces.
 
+### Bay Door Puzzle
+
+The bay door is the final obstacle — a mechanical door sealed shut, with a lemmings puzzle panel mounted beside it in the loading bay. The player must route power through crystals and gear up the drive chain to open the door.
+
+**Puzzle structure (lemmings):**
+- **Power source** — a beam emitter built into the door mechanism, always present
+- **Crystals** — collected throughout the cryo facility. In the puzzle they function as mirrors, splitters, and filters. The player arranges them to route the beam correctly
+- **Targets** — beam endpoints that, when hit, power the gear system
+- **Gears** — collected throughout the facility. The player places them on pegs to build a chain from the powered targets to the door mechanism
+- **Door chain** — the output gear connects to the bay door. When the full chain is complete and powered, the door opens
+
+**Flow:**
+1. Player approaches the bay door panel in the loading bay
+2. Opens the lemmings puzzle
+3. Places crystals to route the power beam to hit the targets
+4. Places gears on pegs to connect the powered driver to the output
+5. When both the beam routing and gear chain are solved, the door mechanism animates open
+6. Completing this puzzle ends the cryo facility episode
+
+**Items used:**
+- Crystals (inventory items → become prismatic elements in the puzzle)
+- Gears (inventory items → placed on clockwork pegs in the puzzle)
+
+**Design notes:**
+- The puzzle background image shows the bay door with a visible chain/gear housing, so the player understands the mechanical connection
+- Crystals and gears are found across all rooms — some obvious, some hidden behind earlier puzzles or state changes
+- The puzzle difficulty comes from having limited crystals and gears — the player must use exactly what they've collected
+
 ### Exit — Call for Transport
 
 With power restored and the meta map in progress, the player's final objective is to leave the cryo facility. The player must call for transport using a comms system and open the loading bay door. Opening the bay door is how the player exits this episode.
@@ -115,6 +143,12 @@ IsoMarks: 2 created, 1 found
 
 Spindial: 1
   Issued at scanner, holds cryo + engine symbols
+
+Crystals: TBD count
+  Found throughout the facility — used as mirrors/splitters/filters in the bay door puzzle
+
+Gears: TBD count
+  Found throughout the facility — placed on pegs in the bay door puzzle
 
 Map: 1
   Tapestry inside cylinder compartment in operations desk, revealed later as reward for solving the meta map ideogram
@@ -178,4 +212,4 @@ Puzzle editor:
 - The circle on the desk in operations is the spindial dock — place the spindial there to interact with the kinetic power puzzle that generates temporary power to the room.
 - The third door in the loading bay leads to the engine shaft.
 - How does the player call for transport? What comms system do they use?
-- What triggers the bay door to open — is it a separate puzzle, a switch, or automatic after the call?
+- ~~What triggers the bay door to open~~ — **Answered: Bay Door Puzzle** (lemmings — crystal beam routing + gear chain)

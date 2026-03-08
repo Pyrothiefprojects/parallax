@@ -1035,6 +1035,23 @@ window.PARALLAX_PROJECT ={
       "rewardSceneState": null,
       "isClue": false,
       "completionText": ""
+    },
+    {
+      "id": "puzzle_1772997636655",
+      "name": "Bay Door Panel",
+      "states": [
+        {
+          "backgroundImage": "assets/puzzles/baydoorpanel.png",
+          "assets": [],
+          "assetGroups": [],
+          "hotspots": []
+        }
+      ],
+      "editingStateIndex": 0,
+      "rewardItemId": "",
+      "rewardSceneState": null,
+      "isClue": false,
+      "completionText": ""
     }
   ],
   "gameState": [
@@ -1482,7 +1499,7 @@ window.PARALLAX_PROJECT ={
     },
     "metadata": {
       "created": 1771308000000,
-      "modified": 1772771728728
+      "modified": 1772997662489
     }
   },
   "ideogramData": {
@@ -1666,7 +1683,7 @@ window.PARALLAX_PROJECT ={
         },
         "metadata": {
           "created": 1771503169529,
-          "modified": 1772771728728
+          "modified": 1772997662490
         },
         "thumbnail": "assets/puzzles/pieces/Ideogram codex.png",
         "isopresses": [

@@ -11,6 +11,8 @@ const BlueprintEditor = (() => {
     let itemWheelOpen = false;
     let pendingItemPlacement = null; // { x, y } for item placement after selection
     let draggingItem = null; // { element, startMouseX, startMouseY, startElemX, startElemY }
+    let panning = null; // { startX, startY, origOffsetX, origOffsetY } for middle-click pan
+    let scrollbarDrag = null; // { axis: 'h'|'v', startMouse, startOffset }
 
     // ========== CONSTANTS ==========
     const GRID_SIZE = 40;
@@ -40,6 +42,7 @@ const BlueprintEditor = (() => {
         blueprintCanvas.addEventListener('mousedown', handleMouseDown);
         blueprintCanvas.addEventListener('mousemove', handleMouseMove);
         blueprintCanvas.addEventListener('mouseup', handleMouseUp);
+        blueprintCanvas.addEventListener('wheel', handleWheel, { passive: false });
 
         return true;
     }
@@ -99,12 +102,17 @@ const BlueprintEditor = (() => {
         ctx.fillStyle = GRID_BG;
         ctx.fillRect(0, 0, blueprintCanvas.width, blueprintCanvas.height);
 
+        const z = viewport.zoom;
+        const gs = GRID_SIZE * z;
+        const ox = viewport.offsetX % gs;
+        const oy = viewport.offsetY % gs;
+
         ctx.strokeStyle = GRID_COLOR;
         ctx.lineWidth = 1;
         ctx.setLineDash([2, 4]);
 
         // Vertical lines
-        for (let x = viewport.offsetX % GRID_SIZE; x < blueprintCanvas.width; x += GRID_SIZE) {
+        for (let x = ox; x < blueprintCanvas.width; x += gs) {
             ctx.beginPath();
             ctx.moveTo(x, 0);
             ctx.lineTo(x, blueprintCanvas.height);
@@ -112,7 +120,7 @@ const BlueprintEditor = (() => {
         }
 
         // Horizontal lines
-        for (let y = viewport.offsetY % GRID_SIZE; y < blueprintCanvas.height; y += GRID_SIZE) {
+        for (let y = oy; y < blueprintCanvas.height; y += gs) {
             ctx.beginPath();
             ctx.moveTo(0, y);
             ctx.lineTo(blueprintCanvas.width, y);
@@ -120,6 +128,14 @@ const BlueprintEditor = (() => {
         }
 
         ctx.setLineDash([]);
+    }
+
+    // Convert screen (canvas pixel) coords to world coords
+    function screenToWorld(sx, sy) {
+        return {
+            x: (sx - viewport.offsetX) / viewport.zoom,
+            y: (sy - viewport.offsetY) / viewport.zoom
+        };
     }
 
     function snapToGrid(value) {
@@ -141,6 +157,10 @@ const BlueprintEditor = (() => {
 
         renderGrid();
 
+        ctx.save();
+        ctx.translate(viewport.offsetX, viewport.offsetY);
+        ctx.scale(viewport.zoom, viewport.zoom);
+
         // Render all elements
         blueprintElements.forEach(el => renderElement(el));
 
@@ -148,12 +168,24 @@ const BlueprintEditor = (() => {
         if (drawing) {
             renderDrawingPreview();
         }
+
+        ctx.restore();
+
+        // Scrollbars (screen space)
+        renderScrollbars();
+
+        // Zoom label
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText(Math.round(viewport.zoom * 100) + '%', blueprintCanvas.width - 8, blueprintCanvas.height - 8);
+        ctx.textAlign = 'left';
     }
 
     function renderElement(element) {
         const isSelected = element === selectedElement;
-        const x = element.x + viewport.offsetX;
-        const y = element.y + viewport.offsetY;
+        const x = element.x;
+        const y = element.y;
 
         // Perspective tool renders as X
         if (element.type === 'perspective') {
@@ -249,8 +281,8 @@ const BlueprintEditor = (() => {
     }
 
     function renderDrawingPreview() {
-        const x = Math.min(drawing.startX, drawing.currentX) + viewport.offsetX;
-        const y = Math.min(drawing.startY, drawing.currentY) + viewport.offsetY;
+        const x = Math.min(drawing.startX, drawing.currentX);
+        const y = Math.min(drawing.startY, drawing.currentY);
         const w = Math.abs(drawing.currentX - drawing.startX);
         const h = Math.abs(drawing.currentY - drawing.startY);
 
@@ -306,12 +338,44 @@ const BlueprintEditor = (() => {
                     <span class="tool-label">Item</span>
                 </button>
             </div>
+            <div style="margin-top:8px; padding-top:6px; border-top:1px solid rgba(255,255,255,0.1);">
+                <label style="font-size:10px; color:var(--text-secondary);">Zoom: <span id="blueprint-zoom-label">${Math.round(viewport.zoom * 100)}%</span></label>
+                <input type="range" id="blueprint-zoom-slider" min="0.2" max="4" step="0.05" value="${viewport.zoom}" style="width:100%; margin-top:2px;">
+                <button class="panel-btn" id="blueprint-zoom-reset" style="font-size:10px; width:100%; margin-top:4px;">Reset View</button>
+            </div>
         `;
 
         // Wire tool buttons
         body.querySelectorAll('.blueprint-tool').forEach(btn => {
             btn.addEventListener('click', () => selectTool(btn.dataset.tool));
         });
+
+        // Wire zoom slider
+        const zoomSlider = document.getElementById('blueprint-zoom-slider');
+        if (zoomSlider) {
+            zoomSlider.addEventListener('input', (e) => {
+                const cw = blueprintCanvas.width / 2;
+                const ch = blueprintCanvas.height / 2;
+                const oldZoom = viewport.zoom;
+                viewport.zoom = parseFloat(e.target.value);
+                viewport.offsetX = cw - (cw - viewport.offsetX) * (viewport.zoom / oldZoom);
+                viewport.offsetY = ch - (ch - viewport.offsetY) * (viewport.zoom / oldZoom);
+                document.getElementById('blueprint-zoom-label').textContent = Math.round(viewport.zoom * 100) + '%';
+                renderBlueprint();
+            });
+        }
+
+        // Wire reset button
+        const resetBtn = document.getElementById('blueprint-zoom-reset');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                viewport.zoom = 1.0;
+                viewport.offsetX = 0;
+                viewport.offsetY = 0;
+                updateZoomSlider();
+                renderBlueprint();
+            });
+        }
 
         // Wire close button
         const closeBtn = document.getElementById('blueprint-tools-close');
@@ -443,9 +507,19 @@ const BlueprintEditor = (() => {
     // ========== MOUSE INTERACTION ==========
     function handleMouseDown(e) {
         if (!active) return;
+
+        // Middle-click pan
+        if (e.button === 1) {
+            e.preventDefault();
+            panning = { startX: e.clientX, startY: e.clientY, origOffsetX: viewport.offsetX, origOffsetY: viewport.offsetY };
+            return;
+        }
+
         const rect = blueprintCanvas.getBoundingClientRect();
-        const startX = e.clientX - rect.left - viewport.offsetX;
-        const startY = e.clientY - rect.top - viewport.offsetY;
+        const screen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        const world = screenToWorld(screen.x, screen.y);
+        const startX = world.x;
+        const startY = world.y;
 
         // Item tool: open radial wheel at click position
         if (activeTool === 'item') {
@@ -515,11 +589,21 @@ const BlueprintEditor = (() => {
 
     function handleMouseMove(e) {
         if (!active) return;
+
+        // Middle-click pan
+        if (panning) {
+            viewport.offsetX = panning.origOffsetX + (e.clientX - panning.startX);
+            viewport.offsetY = panning.origOffsetY + (e.clientY - panning.startY);
+            renderBlueprint();
+            return;
+        }
+
         // Handle item dragging
         if (draggingItem) {
             const rect = blueprintCanvas.getBoundingClientRect();
-            const currentX = e.clientX - rect.left - viewport.offsetX;
-            const currentY = e.clientY - rect.top - viewport.offsetY;
+            const world = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+            const currentX = world.x;
+            const currentY = world.y;
 
             const deltaX = currentX - draggingItem.startMouseX;
             const deltaY = currentY - draggingItem.startMouseY;
@@ -535,8 +619,9 @@ const BlueprintEditor = (() => {
         if (!drawing) return;
 
         const rect = blueprintCanvas.getBoundingClientRect();
-        const currentX = snapToGrid(e.clientX - rect.left - viewport.offsetX);
-        const currentY = snapToGrid(e.clientY - rect.top - viewport.offsetY);
+        const world = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+        const currentX = snapToGrid(world.x);
+        const currentY = snapToGrid(world.y);
 
         drawing.currentX = currentX;
         drawing.currentY = currentY;
@@ -546,6 +631,7 @@ const BlueprintEditor = (() => {
 
     function handleMouseUp(e) {
         if (!active) return;
+        if (panning) { panning = null; return; }
         // Handle item drag end
         if (draggingItem) {
             draggingItem = null;
@@ -578,6 +664,88 @@ const BlueprintEditor = (() => {
 
         drawing = null;
         renderBlueprint();
+    }
+
+    function handleWheel(e) {
+        if (!active) return;
+        e.preventDefault();
+
+        if (e.ctrlKey || e.metaKey) {
+            // Zoom
+            const rect = blueprintCanvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            const oldZoom = viewport.zoom;
+            const delta = e.deltaY > 0 ? -0.05 : 0.05;
+            viewport.zoom = Math.max(0.2, Math.min(4, viewport.zoom + delta));
+            // Zoom toward mouse position
+            viewport.offsetX = mx - (mx - viewport.offsetX) * (viewport.zoom / oldZoom);
+            viewport.offsetY = my - (my - viewport.offsetY) * (viewport.zoom / oldZoom);
+            updateZoomSlider();
+        } else {
+            // Pan
+            viewport.offsetX -= e.deltaX;
+            viewport.offsetY -= e.deltaY;
+        }
+        renderBlueprint();
+    }
+
+    function updateZoomSlider() {
+        const slider = document.getElementById('blueprint-zoom-slider');
+        const label = document.getElementById('blueprint-zoom-label');
+        if (slider) slider.value = viewport.zoom;
+        if (label) label.textContent = Math.round(viewport.zoom * 100) + '%';
+    }
+
+    // ========== SCROLLBARS ==========
+    function getContentBounds() {
+        if (blueprintElements.length === 0) return { minX: 0, minY: 0, maxX: 1000, maxY: 1000 };
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const el of blueprintElements) {
+            minX = Math.min(minX, el.x);
+            minY = Math.min(minY, el.y);
+            maxX = Math.max(maxX, el.x + el.width);
+            maxY = Math.max(maxY, el.y + el.height);
+        }
+        const pad = 400;
+        return { minX: minX - pad, minY: minY - pad, maxX: maxX + pad, maxY: maxY + pad };
+    }
+
+    function renderScrollbars() {
+        const bounds = getContentBounds();
+        const z = viewport.zoom;
+        const cw = blueprintCanvas.width;
+        const ch = blueprintCanvas.height;
+        const totalW = (bounds.maxX - bounds.minX) * z;
+        const totalH = (bounds.maxY - bounds.minY) * z;
+        const barSize = 6;
+        const margin = 2;
+
+        // Horizontal scrollbar
+        if (totalW > cw) {
+            const viewLeft = -viewport.offsetX + bounds.minX * z;
+            const thumbW = Math.max(30, (cw / totalW) * (cw - margin * 2));
+            const trackW = cw - margin * 2;
+            const thumbX = margin + (viewLeft / totalW) * trackW;
+
+            ctx.fillStyle = 'rgba(255,255,255,0.08)';
+            ctx.fillRect(margin, ch - barSize - margin, trackW, barSize);
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.fillRect(Math.max(margin, Math.min(thumbX, margin + trackW - thumbW)), ch - barSize - margin, thumbW, barSize);
+        }
+
+        // Vertical scrollbar
+        if (totalH > ch) {
+            const viewTop = -viewport.offsetY + bounds.minY * z;
+            const thumbH = Math.max(30, (ch / totalH) * (ch - margin * 2));
+            const trackH = ch - margin * 2;
+            const thumbY = margin + (viewTop / totalH) * trackH;
+
+            ctx.fillStyle = 'rgba(255,255,255,0.08)';
+            ctx.fillRect(cw - barSize - margin, margin, barSize, trackH);
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.fillRect(cw - barSize - margin, Math.max(margin, Math.min(thumbY, margin + trackH - thumbH)), barSize, thumbH);
+        }
     }
 
     function hitTestElement(x, y) {
@@ -629,8 +797,8 @@ const BlueprintEditor = (() => {
         popoverEl = document.createElement('div');
         popoverEl.className = 'hotspot-popover blueprint-popover';
         popoverEl.style.position = 'fixed';
-        popoverEl.style.left = (rect.left + element.x + viewport.offsetX + element.width + 12) + 'px';
-        popoverEl.style.top = (rect.top + element.y + viewport.offsetY) + 'px';
+        popoverEl.style.left = (rect.left + element.x * viewport.zoom + viewport.offsetX + element.width * viewport.zoom + 12) + 'px';
+        popoverEl.style.top = (rect.top + element.y * viewport.zoom + viewport.offsetY) + 'px';
 
         popoverEl.innerHTML = generatePopoverHTML(element);
 
@@ -655,7 +823,7 @@ const BlueprintEditor = (() => {
             // Check collision with right panel or right edge
             if (popRect.right > rightPanelLeft || popRect.right > window.innerWidth) {
                 // Position to the left of element
-                popoverEl.style.left = Math.max(leftPanelRight, rect.left + element.x + viewport.offsetX - popRect.width - 12) + 'px';
+                popoverEl.style.left = Math.max(leftPanelRight, rect.left + element.x * viewport.zoom + viewport.offsetX - popRect.width - 12) + 'px';
             }
 
             // Check collision with left panel
