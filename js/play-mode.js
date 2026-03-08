@@ -19,8 +19,6 @@ const PlayMode = (() => {
     const puzzleClose = document.getElementById('puzzle-overlay-close');
     let activePuzzleHotspot = null;
     let wheelOpen = false;
-    const radialWheel = document.getElementById('radial-wheel');
-    const radialWheelItems = document.getElementById('radial-wheel-items');
 
     function enter() {
         active = true;
@@ -122,81 +120,31 @@ const PlayMode = (() => {
 
     function openRadialWheel(clientX, clientY) {
         const inv = GameState.getInventory();
-        radialWheelItems.innerHTML = '';
-
-        // Clamp center so wheel stays in viewport
-        const padding = 80;
-        const cx = Math.max(padding, Math.min(window.innerWidth - padding, clientX));
-        const cy = Math.max(padding, Math.min(window.innerHeight - padding, clientY));
-
-        if (inv.length === 0) {
-            const emptyEl = document.createElement('div');
-            emptyEl.className = 'radial-wheel-empty';
-            emptyEl.style.left = cx + 'px';
-            emptyEl.style.top = cy + 'px';
-            emptyEl.textContent = 'No items collected';
-            radialWheelItems.appendChild(emptyEl);
-        } else {
-            const radius = inv.length === 1 ? 0 : Math.max(70, inv.length * 18);
-            const angleStep = (2 * Math.PI) / inv.length;
-            const startAngle = -Math.PI / 2;
-
-            inv.forEach((itemId, i) => {
-                const item = InventoryEditor.getItem(itemId);
-                if (!item) return;
-
-                const angle = startAngle + angleStep * i;
-                const x = cx + Math.cos(angle) * radius;
-                const y = cy + Math.sin(angle) * radius;
-
-                const el = document.createElement('div');
-                el.className = 'radial-wheel-item' + (selectedItem === itemId ? ' selected' : '');
-                el.style.left = x + 'px';
-                el.style.top = y + 'px';
-                el.dataset.itemId = itemId;
-
-                if (item.image) {
-                    const img = document.createElement('img');
-                    img.src = item.image;
-                    img.alt = item.name;
-                    el.appendChild(img);
+        const items = inv.map(id => InventoryEditor.getItem(id)).filter(Boolean);
+        RadialWheel.open(items, clientX, clientY, (itemId) => {
+            selectedItem = itemId;
+            wheelOpen = false;
+            try {
+                const cur = getItemCursor(itemId);
+                Canvas.getCanvasElement().style.cursor = cur;
+                if (!puzzleOverlay.classList.contains('hidden')) {
+                    puzzleOverlay.style.cursor = cur;
                 }
-
-                const nameEl = document.createElement('span');
-                nameEl.className = 'radial-wheel-item-name';
-                nameEl.textContent = item.name;
-                el.appendChild(nameEl);
-
-                el.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    selectedItem = itemId;
-                    try {
-                        const cur = getItemCursor(itemId);
-                        Canvas.getCanvasElement().style.cursor = cur;
-                        if (!puzzleOverlay.classList.contains('hidden')) {
-                            puzzleOverlay.style.cursor = cur;
-                        }
-                    } catch (_) {}
-                    closeRadialWheel();
-                });
-
-                el.addEventListener('contextmenu', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    closeRadialWheel();
-                });
-
-                radialWheelItems.appendChild(el);
-            });
-        }
-
-        radialWheel.classList.remove('hidden');
+            } catch (_) {}
+        }, {
+            selectedId: selectedItem,
+            emptyText: 'No items collected',
+            onClose() {
+                wheelOpen = false;
+                selectedItem = null;
+                Canvas.getCanvasElement().style.cursor = 'default';
+            }
+        });
         wheelOpen = true;
     }
 
     function closeRadialWheel() {
-        radialWheel.classList.add('hidden');
-        radialWheelItems.innerHTML = '';
+        RadialWheel.close();
         wheelOpen = false;
     }
 
@@ -1542,21 +1490,6 @@ const PlayMode = (() => {
             } else {
                 showDialogue('No more hints — you\'ve done everything!');
             }
-        });
-
-        // Radial wheel: click outside items to dismiss + deselect
-        radialWheel.addEventListener('click', (e) => {
-            if (!e.target.closest('.radial-wheel-item')) {
-                selectedItem = null;
-                Canvas.getCanvasElement().style.cursor = 'default';
-                closeRadialWheel();
-            }
-        });
-        radialWheel.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            selectedItem = null;
-            Canvas.getCanvasElement().style.cursor = 'default';
-            closeRadialWheel();
         });
 
         // Right-click in puzzle overlay opens radial wheel

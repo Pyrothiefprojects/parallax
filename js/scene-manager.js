@@ -454,8 +454,8 @@ const SceneManager = (() => {
             blueprint: BlueprintEditor.getBlueprintData(),
             ideogramData: IdeogramEditor.getIdeogramData(),
             ruinscopeData: RuinscopeEditor.getRuinscopeData(),
-            prismaticData: PrismaticEditor.getPrismaticData(),
-            clockworkData: ClockworkEditor.getClockworkData()
+            lemmingsData: LemmingsEditor.getLemmingsData(),
+            puzzleAssets: PuzzleAssetLibrary.getData()
         };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -525,11 +525,16 @@ const SceneManager = (() => {
         if (data.ruinscopeData) {
             RuinscopeEditor.loadRuinscopeData(data.ruinscopeData);
         }
-        if (data.prismaticData) {
-            PrismaticEditor.loadPrismaticData(data.prismaticData);
+        if (data.lemmingsData) {
+            LemmingsEditor.loadLemmingsData(data.lemmingsData);
+        } else if (data.prismaticData || data.clockworkData) {
+            LemmingsEditor.loadLemmingsData({
+                prismatics: data.prismaticData ? data.prismaticData.prismatics : [],
+                clockworks: data.clockworkData ? data.clockworkData.clockworks : []
+            });
         }
-        if (data.clockworkData) {
-            ClockworkEditor.loadClockworkData(data.clockworkData);
+        if (data.puzzleAssets) {
+            PuzzleAssetLibrary.loadData(data.puzzleAssets);
         }
         renderSceneList();
     }

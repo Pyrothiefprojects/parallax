@@ -9,7 +9,6 @@ const BlueprintEditor = (() => {
     let viewport = { offsetX: 0, offsetY: 0, zoom: 1.0 };
     let blueprintMetadata = { created: Date.now(), modified: Date.now() };
     let itemWheelOpen = false;
-    let radialWheelEl = null;
     let pendingItemPlacement = null; // { x, y } for item placement after selection
     let draggingItem = null; // { element, startMouseX, startMouseY, startElemX, startElemY }
 
@@ -391,92 +390,20 @@ const BlueprintEditor = (() => {
     // ========== ITEM RADIAL WHEEL ==========
     function openItemRadialWheel(clientX, clientY, gridX, gridY) {
         const items = typeof InventoryEditor !== 'undefined' ? InventoryEditor.getAllItems() : [];
-
         closeItemRadialWheel();
-
-        // Store placement position
         pendingItemPlacement = { x: gridX, y: gridY };
-
-        // Create radial wheel container
-        radialWheelEl = document.createElement('div');
-        radialWheelEl.className = 'radial-wheel';
-        radialWheelEl.id = 'blueprint-radial-wheel';
-
-        const itemsContainer = document.createElement('div');
-        itemsContainer.className = 'radial-wheel-items';
-
-        // Clamp center so wheel stays in viewport
-        const padding = 80;
-        const cx = Math.max(padding, Math.min(window.innerWidth - padding, clientX));
-        const cy = Math.max(padding, Math.min(window.innerHeight - padding, clientY));
-
-        if (items.length === 0) {
-            const emptyEl = document.createElement('div');
-            emptyEl.className = 'radial-wheel-empty';
-            emptyEl.style.left = cx + 'px';
-            emptyEl.style.top = cy + 'px';
-            emptyEl.textContent = 'No items available';
-            itemsContainer.appendChild(emptyEl);
-        } else {
-            const radius = items.length === 1 ? 0 : Math.max(70, items.length * 18);
-            const angleStep = (2 * Math.PI) / items.length;
-            const startAngle = -Math.PI / 2;
-
-            items.forEach((item, i) => {
-                const angle = startAngle + angleStep * i;
-                const x = cx + Math.cos(angle) * radius;
-                const y = cy + Math.sin(angle) * radius;
-
-                const el = document.createElement('div');
-                el.className = 'radial-wheel-item';
-                el.style.left = x + 'px';
-                el.style.top = y + 'px';
-                el.dataset.itemId = item.id;
-
-                if (item.image) {
-                    const img = document.createElement('img');
-                    img.src = item.image;
-                    img.alt = item.name;
-                    el.appendChild(img);
-                }
-
-                const nameEl = document.createElement('span');
-                nameEl.className = 'radial-wheel-item-name';
-                nameEl.textContent = item.name;
-                el.appendChild(nameEl);
-
-                el.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    handleItemSelection(item.id);
-                });
-
-                el.addEventListener('contextmenu', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    closeItemRadialWheel();
-                });
-
-                itemsContainer.appendChild(el);
-            });
-        }
-
-        radialWheelEl.appendChild(itemsContainer);
-        document.body.appendChild(radialWheelEl);
-        itemWheelOpen = true;
-
-        // Click outside to close
-        radialWheelEl.addEventListener('click', (e) => {
-            if (!e.target.closest('.radial-wheel-item')) {
-                closeItemRadialWheel();
-            }
+        RadialWheel.open(items, clientX, clientY, (itemId) => {
+            itemWheelOpen = false;
+            handleItemSelection(itemId);
+        }, {
+            emptyText: 'No items available',
+            onClose() { itemWheelOpen = false; pendingItemPlacement = null; }
         });
+        itemWheelOpen = true;
     }
 
     function closeItemRadialWheel() {
-        if (radialWheelEl) {
-            radialWheelEl.remove();
-            radialWheelEl = null;
-        }
+        RadialWheel.close();
         itemWheelOpen = false;
         pendingItemPlacement = null;
     }

@@ -86,6 +86,13 @@ const Preloader = (() => {
             }
         }
 
+        // Puzzle asset library images
+        if (data.puzzleAssets) {
+            for (const a of data.puzzleAssets) {
+                if (a.image) urls.add(a.image);
+            }
+        }
+
         return urls;
     }
 

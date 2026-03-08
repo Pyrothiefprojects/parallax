@@ -198,11 +198,46 @@ A light beam reflection puzzle built on the shared blueprint canvas. The designe
 - Target hit → mark target as hit, beam stops
 - Max 50 bounces safety limit
 
-**Editor tools:** Select, Source, Mirror, Target, Wall, Filter, Delete
+**Splitter:**
+- Splits a beam into multiple output beams. Configurable split count (2–16).
+- Three modes:
+  - **Full** — equidistant splits around 360°
+  - **Fan** — splits within a configurable spread arc (1–360°), aimed by rotating the splitter
+  - **Spectrum** — fan mode with rainbow colors (each output beam gets a different color from the spectrum palette: red, orange, yellow, green, blue, indigo, violet, magenta)
+- Rotatable via drag handle (purple line + orange dot), same as mirrors
+- Can be assigned a beam color (applies to Full and Fan modes; Spectrum overrides with rainbow)
+- Editable spread angle — click the spread number label to type an exact degree value
+
+**Asset system:**
+- Asset tool in shared toolbar — click an element, then select an asset from PuzzleAssetLibrary via radial wheel to assign a graphic
+- Asset images render on the canvas at the element's position and rotation
+- Asset config panel: thumbnail preview, size slider (10–200), remove button
+- "Show Elements" checkbox — hides geometric element drawing while keeping asset images, beams, and selection highlights visible. Allows placing decorative graphics over functional puzzle elements.
+
+**Color palettes on all prismatic elements:**
+- Source: beam color (emitted beam starts as this color instead of default cyan)
+- Mirror: reflection color (already existed)
+- Filter: pass-through color (already existed)
+- Target: required color (target only lights up when hit by a beam of the matching color)
+- Splitter: beam color (applied to all output beams in Full/Fan mode; overridden by Spectrum mode)
+
+**Gear-to-element connection:**
+- Connect tool in shared toolbar — two-click flow: first click selects a gear peg, second click selects a rotatable element (source, mirror, filter, splitter) to link them
+- Linked gear rotation drives the element's angle — the element rotates at the same rate as the gear
+- Bidirectional references: peg stores linkedElementId/linkedElementType, element stores linkedPegId
+- Connection shown in config panels of both the gear/peg and the linked element
+- Disconnect button to remove the link
+
+**Editor tools:** Select, Source, Mirror, Target, Wall, Filter, Splitter, Delete — plus shared toolbar: Select, Delete, Asset, Connect
 
 **Config panels:**
+- Source: color swatches (7 presets + none for default cyan)
 - Mirror: locked checkbox, length slider (30–160), color swatches (7 presets + none)
 - Filter: length slider (30–160), color swatches (7 presets, no "none" — filters always have a color)
+- Target: color swatches (7 presets + none — when set, target requires a matching beam color)
+- Splitter: splits slider (2–16), mode buttons (Full/Fan/Spectrum), spread slider (Fan/Spectrum only), color swatches, editable spread label
+- Asset: thumbnail, size slider, remove button
+- Peg/Gear: role, radius, locked, linked element display with disconnect
 
 **Scramble:** Randomizes movable mirror angles. Player rotates mirrors to guide beams to all targets. Solved flash when all targets hit.
 
@@ -249,8 +284,8 @@ The engine is feature-complete for game creation — the current focus is buildi
 - **Ruin Codex** — the primary puzzle type, built using the ideogram editor. The ruin codex is designed to be a recurring puzzle mechanic reused across all stories. The codex tool (disc + spindial) is complete; remaining components are the IsoMark workspace, isopress, isolathe, and codex display.
 - **Isopress** — a smaller puzzle type, mostly built via the IsoMark compositor. Needs puzzle scene registration and asset type wiring.
 - **Ruinscope** — a node-swap untangle puzzle (inspired by WoW's Blingtron Circuit / Ley Line puzzles). Nodes arranged in a loop, each connected to exactly 2 neighbors. The solved state is a clean closed polygon with no line crossings. The scrambled state shuffles node positions so lines tangle. Click two nodes to swap them — their connections travel with them, redrawing lines from new positions. Red lines = crossing another line, blue/glowing lines = clean. All lines clean = solved. Pulsing feedback intensifies as crossings decrease. In-world context: power routing, ley line alignment, or circuit repair.
-- **Prismatic** — a light beam reflection puzzle. The designer places beam sources, mirrors, color filters, targets, and walls on a canvas. Beams trace from sources, reflect off mirrors, stop at walls, and hit targets. Mirrors can be assigned colors — reflecting a beam off a colored mirror changes the beam color. Filters are transparent segments the beam passes through (no reflection) that change the beam color. Scramble randomizes movable mirror angles; the player rotates mirrors to guide beams to all targets. In-world context: optics calibration, laser routing, light-based locks.
-- **Clockwork** — a gear chain puzzle. The designer places pegs (axle points) and gears of different sizes to create a mechanical chain from a driver gear to an output gear. Gears mesh when their edges touch (distance between peg centers ≈ sum of radii). Meshing gears rotate in opposite directions with speed scaled by gear ratio. Scramble removes unlocked gears into a pool; the player drags gears from the pool onto empty pegs to rebuild the chain. Solved when the output gear is connected to the driver through meshing gears. In-world context: engine repair, mechanical locks, power transmission.
+- **Prismatic** — a light beam reflection puzzle. The designer places beam sources, mirrors, color filters, splitters, targets, and walls on a canvas. Beams trace from sources, reflect off mirrors, split through splitters, stop at walls, and hit targets. All prismatic elements support color palettes — sources set beam color, mirrors change color on reflection, filters change color on pass-through, splitters color all output beams, and targets can require a specific color. Splitters have three modes: Full (equidistant 360°), Fan (configurable spread arc), and Spectrum (rainbow prism effect). Elements can have decorative asset graphics overlaid via the Asset tool, with "Show Elements" toggle to hide geometric shapes while keeping assets and beams visible. Gears from the clockwork system can be connected to rotatable prismatic elements (sources, mirrors, filters, splitters) to drive their rotation mechanically. Scramble randomizes movable mirror/splitter angles; the player rotates elements to guide beams to all targets. In-world context: optics calibration, laser routing, light-based locks, prism puzzles.
+- **Clockwork** — a gear chain puzzle. The designer places pegs (axle points) and gears of different sizes to create a mechanical chain from a driver gear to an output gear. Gears mesh when their edges touch (distance between peg centers ≈ sum of radii). Meshing gears rotate in opposite directions with speed scaled by gear ratio. Gears can be connected to prismatic elements (sources, mirrors, filters, splitters) to drive their rotation — enabling hybrid clockwork-prismatic puzzles where the player must build gear chains that aim beam elements correctly. Scramble removes unlocked gears into a pool; the player drags gears from the pool onto empty pegs to rebuild the chain. Solved when the output gear is connected to the driver through meshing gears. In-world context: engine repair, mechanical locks, power transmission.
 
 All inventory items and puzzle assets are lined up for the current puzzle set.
 
@@ -296,4 +331,5 @@ All inventory items and puzzle assets are lined up for the current puzzle set.
 - **Session 11:** Feb 20, ~12 hours — Isopress overlay system (stable imageCache lookup via ruinLibrary matching instead of broken slotImageCache, visual top slot calculation using disc rotation for 12 o'clock position, rotation/mirror transform display on isopress), spindial topIndex fix (mousemove and snap target the visual 12 o'clock slot instead of hardcoded slots[0]), Isopress and Isolathe editor tools (place asset, convert, boundary box, config panel, save/load), cleanup (removed pressRuinCache, updateLinkedPresses, currentOverlay, reverted rebuildSlotImageCache to simple version), full naming convention rename (cypher→codex, press→isopress, lathe→isolathe, plate naming: blank_Mark/ruinMark/IsoPlate/IsoMark), size slider for codex/isopress/isolathe config panels, isopress ruin overlay scale/offset controls, documentation updates, forge machine scene construction with puzzle, **ideogram-to-puzzle integration** (activateForPuzzle/deactivateForPuzzle on overlay canvas, deep-copy arrays with image preloading, viewport offset for coordinate mapping, puzzle mode render path skipping editor-only elements, config panel z-index fix for puzzle overlay, mouse pass-through for missed clicks, editor state save/restore, puzzle ideogramState persistence, ideogram dropdown and remove button in puzzle tools panel, getContentBounds fix for codex/isopress/isolathe scroll clamping, Delete key support for all element types)
 - **Session 12:** Feb 23 — Isopress original scale mode ("Original scale" checkbox scales ruins from native image dimensions instead of plate-fit), puzzle asset uniform resize slider (replaced separate Width/Height inputs with single percentage-based Size slider preserving aspect ratio via originalWidth/originalHeight), puzzle asset CSS fix (`.puzzle-asset img { max-width: none }` — assets were resizing based on distance from container edge due to inherited `max-width: 100%` on absolutely positioned elements), ideogram multi-select (drag-to-select in select mode draws cyan dashed selection rect, center-point detection for codices/isopresses/isolathes, group drag with delta from start positions, Escape to clear), persistent element groups (floating Group/Ungroup button after multi-select, `groupId` property on elements, auto group-drag when clicking any grouped element finds all members by groupId, orange dot indicator on grouped elements, persists through save/load/puzzle mode via spread operator), codex runtime state persistence TODO
 - **Session 13:** Feb 24 — Prismatic puzzle editor (beam source/mirror/target/wall placement, ray casting beam tracing with reflection, glow rendering, scramble/reset, mirror config with locked/length, solved flash), Prismatic color system (color property on mirrors, filter element type with pass-through color change, per-segment beam color tracking, color swatches UI with 7 presets), Clockwork puzzle editor (peg/gear placement, procedural gear rendering with teeth/spokes/hub, mesh graph with distance-based gear meshing, BFS chain detection, rotation animation with gear ratios, gear pool with drag-to-snap placement, scramble/reset, peg config with role/radius/locked), toolbar integration for both (toggle buttons, 5-way mutual exclusion, card lists, export/import)
-- **Total build time:** ~83 hours (so far)
+- **Session 14:** Mar 5, ~3 hours — Shared RadialWheel utility (consolidated 3 duplicate radial wheel implementations from play-mode, blueprint-editor, and ideogram-editor into one reusable module in js/radial-wheel.js), Prismatic asset system (Asset tool in shared toolbar, PuzzleAssetLibrary radial wheel for assigning graphics to elements, asset image rendering on canvas with rotation, asset config panel with thumbnail/size/remove, Show Elements toggle to hide geometric drawing while keeping assets visible), Prismatic splitter element (rotatable splitter with drag handle, 3 modes: Full/Fan/Spectrum, configurable spread arc, editable spread label, spectrum rainbow colors), color palettes on all prismatic elements (source beam color, target required color, splitter beam color), gear-to-element connection system (Connect tool with two-click flow, bidirectional peg-element linking, gear rotation drives element angle)
+- **Total build time:** ~86 hours (so far)

@@ -133,11 +133,17 @@ const Toolbar = (() => {
             render() {
                 return `
                     <div class="panel-section visible" data-panel="puzzle">
+                        <div class="scene-panel-top" style="margin-bottom:6px;">
+                            <span class="panel-label">Puzzle Assets</span>
+                            <button id="puzzle-asset-lib-add" class="panel-btn primary">+ Add</button>
+                            <input id="puzzle-asset-lib-input" type="file" accept="image/*" multiple style="display:none">
+                        </div>
+                        <div id="puzzle-asset-lib-list" class="scene-list" style="max-height:120px; overflow-y:auto;"></div>
+                        <div class="panel-divider" style="margin:6px 0;"></div>
                         <div class="gamestate-mode-toggle">
                             <button id="ideogram-toggle" class="panel-btn">Ideogram</button>
                             <button id="ruinscope-toggle" class="panel-btn">Ruinscope</button>
-                            <button id="prismatic-toggle" class="panel-btn">Prismatic</button>
-                            <button id="clockwork-toggle" class="panel-btn">Clockwork</button>
+                            <button id="lemmings-toggle" class="panel-btn">Lemmings</button>
                         </div>
                         <div id="puzzle-standard-view">
                             <div class="scene-panel-top">
@@ -179,27 +185,15 @@ const Toolbar = (() => {
                                 </label>
                             </div>
                         </div>
-                        <div id="prismatic-view" class="hidden">
+                        <div id="lemmings-view" class="hidden">
                             <div class="scene-panel-top" style="margin-bottom:6px;">
-                                <span class="panel-label">Prismatics</span>
-                                <button id="prismatic-new" class="panel-btn primary">+ New</button>
+                                <span class="panel-label">Lemmings</span>
+                                <button id="lemmings-new" class="panel-btn primary">+ New</button>
                             </div>
-                            <div id="prismatic-card-list" class="scene-list"></div>
+                            <div id="lemmings-card-list" class="scene-list"></div>
                             <div class="overlay-toggle-row" style="margin-top:8px;">
                                 <label class="overlay-master-label">
-                                    <input type="checkbox" id="prismatic-allow-delete-toggle"> Allow Delete
-                                </label>
-                            </div>
-                        </div>
-                        <div id="clockwork-view" class="hidden">
-                            <div class="scene-panel-top" style="margin-bottom:6px;">
-                                <span class="panel-label">Clockworks</span>
-                                <button id="clockwork-new" class="panel-btn primary">+ New</button>
-                            </div>
-                            <div id="clockwork-card-list" class="scene-list"></div>
-                            <div class="overlay-toggle-row" style="margin-top:8px;">
-                                <label class="overlay-master-label">
-                                    <input type="checkbox" id="clockwork-allow-delete-toggle"> Allow Delete
+                                    <input type="checkbox" id="lemmings-allow-delete-toggle"> Allow Delete
                                 </label>
                             </div>
                         </div>
@@ -208,6 +202,22 @@ const Toolbar = (() => {
             },
             init() {
                 PuzzleEditor.initToolbar();
+
+                // Puzzle Asset Library
+                const palAddBtn = document.getElementById('puzzle-asset-lib-add');
+                const palInput = document.getElementById('puzzle-asset-lib-input');
+                palAddBtn.addEventListener('click', () => palInput.click());
+                palInput.addEventListener('change', (e) => {
+                    const files = Array.from(e.target.files);
+                    for (const file of files) {
+                        const name = file.name.replace(/\.[^.]+$/, '');
+                        const path = 'assets/puzzles/pieces/' + file.name;
+                        PuzzleAssetLibrary.addAsset(name, path);
+                    }
+                    palInput.value = '';
+                    renderPuzzleAssetLibList();
+                });
+                renderPuzzleAssetLibList();
 
                 const deleteToggle = document.getElementById('puzzle-allow-delete-toggle');
                 deleteToggle.addEventListener('change', () => {
@@ -224,9 +234,9 @@ const Toolbar = (() => {
                     document.getElementById('float-panel-body').classList.toggle('delete-enabled', ruinscopeDeleteToggle.checked);
                 });
 
-                const prismaticDeleteToggle = document.getElementById('prismatic-allow-delete-toggle');
-                prismaticDeleteToggle.addEventListener('change', () => {
-                    document.getElementById('float-panel-body').classList.toggle('delete-enabled', prismaticDeleteToggle.checked);
+                const lemmingsDeleteToggle = document.getElementById('lemmings-allow-delete-toggle');
+                lemmingsDeleteToggle.addEventListener('change', () => {
+                    document.getElementById('float-panel-body').classList.toggle('delete-enabled', lemmingsDeleteToggle.checked);
                 });
 
                 // Ideogram toggle
@@ -246,15 +256,10 @@ const Toolbar = (() => {
                             ruinscopeToggle.textContent = 'Ruinscope';
                             ruinscopeView.classList.add('hidden');
                         }
-                        if (PrismaticEditor.isActive()) {
-                            PrismaticEditor.deactivate();
-                            prismaticToggle.textContent = 'Prismatic';
-                            prismaticView.classList.add('hidden');
-                        }
-                        if (ClockworkEditor.isActive()) {
-                            ClockworkEditor.deactivate();
-                            clockworkToggle.textContent = 'Clockwork';
-                            clockworkView.classList.add('hidden');
+                        if (LemmingsEditor.isActive()) {
+                            LemmingsEditor.deactivate();
+                            lemmingsToggle.textContent = 'Lemmings';
+                            lemmingsView.classList.add('hidden');
                         }
                         IdeogramEditor.activate();
                         ideogramToggle.textContent = 'Scene';
@@ -285,15 +290,10 @@ const Toolbar = (() => {
                             ideogramToggle.textContent = 'Ideogram';
                             ideogramView.classList.add('hidden');
                         }
-                        if (PrismaticEditor.isActive()) {
-                            PrismaticEditor.deactivate();
-                            prismaticToggle.textContent = 'Prismatic';
-                            prismaticView.classList.add('hidden');
-                        }
-                        if (ClockworkEditor.isActive()) {
-                            ClockworkEditor.deactivate();
-                            clockworkToggle.textContent = 'Clockwork';
-                            clockworkView.classList.add('hidden');
+                        if (LemmingsEditor.isActive()) {
+                            LemmingsEditor.deactivate();
+                            lemmingsToggle.textContent = 'Lemmings';
+                            lemmingsView.classList.add('hidden');
                         }
                         RuinscopeEditor.activate();
                         ruinscopeToggle.textContent = 'Scene';
@@ -308,16 +308,16 @@ const Toolbar = (() => {
                     refreshRuinscopeList();
                 });
 
-                // Prismatic toggle
-                const prismaticToggle = document.getElementById('prismatic-toggle');
-                const prismaticView = document.getElementById('prismatic-view');
+                // Lemmings toggle
+                const lemmingsToggle = document.getElementById('lemmings-toggle');
+                const lemmingsView = document.getElementById('lemmings-view');
 
-                prismaticToggle.addEventListener('click', () => {
-                    if (PrismaticEditor.isActive()) {
-                        PrismaticEditor.deactivate();
-                        prismaticToggle.textContent = 'Prismatic';
+                lemmingsToggle.addEventListener('click', () => {
+                    if (LemmingsEditor.isActive()) {
+                        LemmingsEditor.deactivate();
+                        lemmingsToggle.textContent = 'Lemmings';
                         puzzleStandardView.classList.remove('hidden');
-                        prismaticView.classList.add('hidden');
+                        lemmingsView.classList.add('hidden');
                     } else {
                         if (IdeogramEditor.isActive()) {
                             IdeogramEditor.deactivate();
@@ -329,61 +329,17 @@ const Toolbar = (() => {
                             ruinscopeToggle.textContent = 'Ruinscope';
                             ruinscopeView.classList.add('hidden');
                         }
-                        if (ClockworkEditor.isActive()) {
-                            ClockworkEditor.deactivate();
-                            clockworkToggle.textContent = 'Clockwork';
-                            clockworkView.classList.add('hidden');
-                        }
-                        PrismaticEditor.activate();
-                        prismaticToggle.textContent = 'Scene';
+                        LemmingsEditor.activate();
+                        lemmingsToggle.textContent = 'Scene';
                         puzzleStandardView.classList.add('hidden');
-                        prismaticView.classList.remove('hidden');
-                        refreshPrismaticList();
+                        lemmingsView.classList.remove('hidden');
+                        refreshLemmingsList();
                     }
                 });
 
-                document.getElementById('prismatic-new').addEventListener('click', () => {
-                    PrismaticEditor.createPrismatic('Untitled');
-                    refreshPrismaticList();
-                });
-
-                // Clockwork toggle
-                const clockworkToggle = document.getElementById('clockwork-toggle');
-                const clockworkView = document.getElementById('clockwork-view');
-
-                clockworkToggle.addEventListener('click', () => {
-                    if (ClockworkEditor.isActive()) {
-                        ClockworkEditor.deactivate();
-                        clockworkToggle.textContent = 'Clockwork';
-                        puzzleStandardView.classList.remove('hidden');
-                        clockworkView.classList.add('hidden');
-                    } else {
-                        if (IdeogramEditor.isActive()) {
-                            IdeogramEditor.deactivate();
-                            ideogramToggle.textContent = 'Ideogram';
-                            ideogramView.classList.add('hidden');
-                        }
-                        if (RuinscopeEditor.isActive()) {
-                            RuinscopeEditor.deactivate();
-                            ruinscopeToggle.textContent = 'Ruinscope';
-                            ruinscopeView.classList.add('hidden');
-                        }
-                        if (PrismaticEditor.isActive()) {
-                            PrismaticEditor.deactivate();
-                            prismaticToggle.textContent = 'Prismatic';
-                            prismaticView.classList.add('hidden');
-                        }
-                        ClockworkEditor.activate();
-                        clockworkToggle.textContent = 'Scene';
-                        puzzleStandardView.classList.add('hidden');
-                        clockworkView.classList.remove('hidden');
-                        refreshClockworkList();
-                    }
-                });
-
-                document.getElementById('clockwork-new').addEventListener('click', () => {
-                    ClockworkEditor.createClockwork('Untitled');
-                    refreshClockworkList();
+                document.getElementById('lemmings-new').addEventListener('click', () => {
+                    LemmingsEditor.createLemming('Untitled');
+                    refreshLemmingsList();
                 });
             }
         },
@@ -601,8 +557,7 @@ const Toolbar = (() => {
         if (name !== 'gamestate' && BlueprintEditor.isActive()) BlueprintEditor.deactivate();
         if (name !== 'puzzle' && IdeogramEditor.isActive()) IdeogramEditor.deactivate();
         if (name !== 'puzzle' && RuinscopeEditor.isActive()) RuinscopeEditor.deactivate();
-        if (name !== 'puzzle' && PrismaticEditor.isActive()) PrismaticEditor.deactivate();
-        if (name !== 'puzzle' && ClockworkEditor.isActive()) ClockworkEditor.deactivate();
+        if (name !== 'puzzle' && LemmingsEditor.isActive()) LemmingsEditor.deactivate();
         activeSection = name;
         sectionButtons.forEach(btn => {
             btn.classList.toggle('active', btn.dataset.section === name);
@@ -741,8 +696,8 @@ const Toolbar = (() => {
                 blueprint: BlueprintEditor.getBlueprintData(),
                 ideogramData: IdeogramEditor.getIdeogramData(),
                 ruinscopeData: RuinscopeEditor.getRuinscopeData(),
-                prismaticData: PrismaticEditor.getPrismaticData(),
-                clockworkData: ClockworkEditor.getClockworkData()
+                lemmingsData: LemmingsEditor.getLemmingsData(),
+                puzzleAssets: PuzzleAssetLibrary.getData()
             };
             const clean = stripDataUrls(data);
             const js = 'window.PARALLAX_PROJECT =' + JSON.stringify(clean, null, 2) + ';\n';
@@ -788,8 +743,8 @@ const Toolbar = (() => {
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && !isEditMode()) {
-                if (typeof PlayMode !== 'undefined' && PlayMode.isWheelOpen && PlayMode.isWheelOpen()) {
-                    PlayMode.closeRadialWheel();
+                if (typeof RadialWheel !== 'undefined' && RadialWheel.isOpen()) {
+                    RadialWheel.close();
                 } else if (typeof PlayMode !== 'undefined' && PlayMode.isPickMode && PlayMode.isPickMode()) {
                     PlayMode.exitPickMode();
                 } else {
@@ -922,103 +877,87 @@ const Toolbar = (() => {
         });
     }
 
-    function refreshPrismaticList() {
-        const container = document.getElementById('prismatic-card-list');
-        if (!container || typeof PrismaticEditor === 'undefined') return;
-        const prismatics = PrismaticEditor.getAllPrismatics();
-        const currentId = PrismaticEditor.getCurrentPrismaticId();
+    function renderPuzzleAssetLibList() {
+        const container = document.getElementById('puzzle-asset-lib-list');
+        if (!container || typeof PuzzleAssetLibrary === 'undefined') return;
+        const assets = PuzzleAssetLibrary.getAll();
 
-        if (prismatics.length === 0) {
-            container.innerHTML = '<span class="panel-label" style="color:var(--text-secondary); padding:8px 0;">No prismatics yet.</span>';
+        if (assets.length === 0) {
+            container.innerHTML = '<span class="panel-label" style="color:var(--text-secondary); padding:4px 0; font-size:11px;">No puzzle assets yet.</span>';
             return;
         }
 
-        container.innerHTML = prismatics.map(p => {
-            const srcCount = (p.sources || []).length;
-            const mirCount = (p.mirrors || []).length;
-            const filCount = (p.filters || []).length;
-            const tgtCount = (p.targets || []).length;
-            return `
-            <div class="scene-card ${p.id === currentId ? 'active' : ''}" data-id="${p.id}">
-                <div class="scene-card-info" style="flex:1;">
-                    <input class="scene-card-name" value="${p.name || 'Untitled'}" data-id="${p.id}" spellcheck="false">
-                    <span class="scene-card-meta">${srcCount} src, ${mirCount} mir, ${filCount} fil, ${tgtCount} tgt</span>
+        container.innerHTML = assets.map(a => `
+            <div class="scene-card" data-id="${a.id}" style="min-height:auto; padding:4px 6px;">
+                <div class="scene-thumb" style="width:32px; height:32px; flex-shrink:0;">
+                    <img src="${a.image}" alt="${a.name}" draggable="false" style="width:100%; height:100%; object-fit:contain;">
                 </div>
-                <button class="scene-card-delete" data-id="${p.id}">&times;</button>
+                <div class="scene-card-info" style="flex:1; min-width:0;">
+                    <span class="scene-card-meta" style="font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.name}</span>
+                </div>
+                <button class="scene-card-delete" data-id="${a.id}" style="font-size:12px;">&times;</button>
+            </div>
+        `).join('');
+
+        container.querySelectorAll('.scene-card-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                PuzzleAssetLibrary.removeAsset(btn.dataset.id);
+                renderPuzzleAssetLibList();
+            });
+        });
+    }
+
+    function refreshLemmingsList() {
+        const container = document.getElementById('lemmings-card-list');
+        if (!container || typeof LemmingsEditor === 'undefined') return;
+        const lemmings = LemmingsEditor.getAllLemmings();
+        const currentId = LemmingsEditor.getCurrentLemmingId();
+
+        if (lemmings.length === 0) {
+            container.innerHTML = '<span class="panel-label" style="color:var(--text-secondary); padding:8px 0;">No lemmings yet.</span>';
+            return;
+        }
+
+        container.innerHTML = lemmings.map(lem => {
+            const srcCount = (lem.sources || []).length;
+            const mirCount = (lem.mirrors || []).length;
+            const splCount = (lem.splitters || []).length;
+            const pegCount = (lem.pegs || []).length;
+            const gearCount = (lem.pegs || []).filter(p => p.hasGear).length;
+            return `
+            <div class="scene-card ${lem.id === currentId ? 'active' : ''}" data-id="${lem.id}">
+                <div class="scene-card-info" style="flex:1;">
+                    <input class="scene-card-name" value="${lem.name || 'Untitled'}" data-id="${lem.id}" spellcheck="false">
+                    <span class="scene-card-meta">${srcCount} src, ${mirCount} mir, ${splCount} spl, ${pegCount} peg, ${gearCount} gear</span>
+                </div>
+                <button class="scene-card-delete" data-id="${lem.id}">&times;</button>
             </div>
         `}).join('');
 
         container.querySelectorAll('.scene-card').forEach(card => {
             card.addEventListener('click', (e) => {
                 if (e.target.closest('.scene-card-delete') || e.target.classList.contains('scene-card-name')) return;
-                PrismaticEditor.switchPrismatic(card.dataset.id);
-                refreshPrismaticList();
+                LemmingsEditor.switchLemming(card.dataset.id);
+                refreshLemmingsList();
             });
         });
 
         container.querySelectorAll('.scene-card-name').forEach(input => {
             input.addEventListener('change', () => {
-                const p = PrismaticEditor.getAllPrismatics().find(r => r.id === input.dataset.id);
-                if (p) p.name = input.value.trim();
+                const lem = LemmingsEditor.getAllLemmings().find(l => l.id === input.dataset.id);
+                if (lem) lem.name = input.value.trim();
             });
         });
 
         container.querySelectorAll('.scene-card-delete').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                PrismaticEditor.deletePrismatic(btn.dataset.id);
-                refreshPrismaticList();
+                LemmingsEditor.deleteLemming(btn.dataset.id);
+                refreshLemmingsList();
             });
         });
     }
 
-    function refreshClockworkList() {
-        const container = document.getElementById('clockwork-card-list');
-        if (!container || typeof ClockworkEditor === 'undefined') return;
-        const clockworks = ClockworkEditor.getAllClockworks();
-        const currentId = ClockworkEditor.getCurrentClockworkId();
-
-        if (clockworks.length === 0) {
-            container.innerHTML = '<span class="panel-label" style="color:var(--text-secondary); padding:8px 0;">No clockworks yet.</span>';
-            return;
-        }
-
-        container.innerHTML = clockworks.map(cw => {
-            const pegCount = (cw.pegs || []).length;
-            const gearCount = (cw.pegs || []).filter(p => p.hasGear).length;
-            return `
-            <div class="scene-card ${cw.id === currentId ? 'active' : ''}" data-id="${cw.id}">
-                <div class="scene-card-info" style="flex:1;">
-                    <input class="scene-card-name" value="${cw.name || 'Untitled'}" data-id="${cw.id}" spellcheck="false">
-                    <span class="scene-card-meta">${pegCount} peg${pegCount !== 1 ? 's' : ''}, ${gearCount} gear${gearCount !== 1 ? 's' : ''}</span>
-                </div>
-                <button class="scene-card-delete" data-id="${cw.id}">&times;</button>
-            </div>
-        `}).join('');
-
-        container.querySelectorAll('.scene-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                if (e.target.closest('.scene-card-delete') || e.target.classList.contains('scene-card-name')) return;
-                ClockworkEditor.switchClockwork(card.dataset.id);
-                refreshClockworkList();
-            });
-        });
-
-        container.querySelectorAll('.scene-card-name').forEach(input => {
-            input.addEventListener('change', () => {
-                const cw = ClockworkEditor.getAllClockworks().find(c => c.id === input.dataset.id);
-                if (cw) cw.name = input.value.trim();
-            });
-        });
-
-        container.querySelectorAll('.scene-card-delete').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                ClockworkEditor.deleteClockwork(btn.dataset.id);
-                refreshClockworkList();
-            });
-        });
-    }
-
-    return { init, openSection, closePanel, isEditMode, enterEditMode, enterPlayMode, refreshBlueprintList, refreshIdeogramList, refreshRuinscopeList, refreshPrismaticList, refreshClockworkList };
+    return { init, openSection, closePanel, isEditMode, enterEditMode, enterPlayMode, refreshBlueprintList, refreshIdeogramList, refreshRuinscopeList, refreshLemmingsList };
 })();

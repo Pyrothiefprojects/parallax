@@ -19,7 +19,6 @@ const IdeogramEditor = (() => {
     let deferredDraws = [];
     let draggingRuin = null;
     let rotationDialEl = null;
-    let radialWheelEl = null;
     let pendingRuinPlacement = null;
     let ruinWheelOpen = false;
     let toolsPanelDrag = null;
@@ -3418,58 +3417,17 @@ const IdeogramEditor = (() => {
         closeRuinRadialWheel();
         if (ruinLibrary.length === 0) return;
         pendingRuinPlacement = { x: gridX, y: gridY };
-
-        radialWheelEl = document.createElement('div');
-        radialWheelEl.className = 'radial-wheel';
-        radialWheelEl.id = 'ideogram-radial-wheel';
-
-        const itemsContainer = document.createElement('div');
-        itemsContainer.className = 'radial-wheel-items';
-
-        const padding = 80;
-        const cx = Math.max(padding, Math.min(window.innerWidth - padding, clientX));
-        const cy = Math.max(padding, Math.min(window.innerHeight - padding, clientY));
-        const radius = ruinLibrary.length === 1 ? 0 : Math.max(70, ruinLibrary.length * 18);
-        const angleStep = (2 * Math.PI) / ruinLibrary.length;
-        const startAngle = -Math.PI / 2;
-
-        ruinLibrary.forEach((ruin, i) => {
-            const angle = startAngle + angleStep * i;
-            const x = cx + Math.cos(angle) * radius;
-            const y = cy + Math.sin(angle) * radius;
-
-            const el = document.createElement('div');
-            el.className = 'radial-wheel-item';
-            el.style.left = x + 'px';
-            el.style.top = y + 'px';
-
-            if (ruin.image) {
-                const img = document.createElement('img');
-                img.src = ruin.image;
-                img.alt = ruin.name;
-                el.appendChild(img);
-            }
-            const nameEl = document.createElement('span');
-            nameEl.className = 'radial-wheel-item-name';
-            nameEl.textContent = ruin.name;
-            el.appendChild(nameEl);
-
-            el.addEventListener('click', (e) => { e.stopPropagation(); handleRuinSelection(ruin.id); });
-            el.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); closeRuinRadialWheel(); });
-            itemsContainer.appendChild(el);
+        RadialWheel.open(ruinLibrary, clientX, clientY, (ruinId) => {
+            ruinWheelOpen = false;
+            handleRuinSelection(ruinId);
+        }, {
+            onClose() { ruinWheelOpen = false; pendingRuinPlacement = null; }
         });
-
-        radialWheelEl.appendChild(itemsContainer);
-        document.body.appendChild(radialWheelEl);
         ruinWheelOpen = true;
-
-        radialWheelEl.addEventListener('click', (e) => {
-            if (!e.target.closest('.radial-wheel-item')) closeRuinRadialWheel();
-        });
     }
 
     function closeRuinRadialWheel() {
-        if (radialWheelEl) { radialWheelEl.remove(); radialWheelEl = null; }
+        RadialWheel.close();
         ruinWheelOpen = false;
         pendingRuinPlacement = null;
     }

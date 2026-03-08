@@ -62,20 +62,12 @@
         <div id="ruinscope-tools-body" class="blueprint-tools-body"></div>
     </div>
 
-    <div id="prismatic-tools-panel" class="editor-float-panel editor-float-panel-right hidden">
+    <div id="lemmings-tools-panel" class="editor-float-panel editor-float-panel-right hidden">
         <div class="float-panel-header">
-            <span class="float-panel-title">Prismatic Tools</span>
-            <button class="float-panel-close" id="prismatic-tools-close">&times;</button>
+            <span class="float-panel-title">Lemmings Tools</span>
+            <button class="float-panel-close" id="lemmings-tools-close">&times;</button>
         </div>
-        <div id="prismatic-tools-body" class="blueprint-tools-body"></div>
-    </div>
-
-    <div id="clockwork-tools-panel" class="editor-float-panel editor-float-panel-right hidden">
-        <div class="float-panel-header">
-            <span class="float-panel-title">Clockwork Tools</span>
-            <button class="float-panel-close" id="clockwork-tools-close">&times;</button>
-        </div>
-        <div id="clockwork-tools-body" class="blueprint-tools-body"></div>
+        <div id="lemmings-tools-body" class="blueprint-tools-body"></div>
     </div>
 
     <div id="viewport" class="viewport">
@@ -101,11 +93,6 @@
         </div>
     </div>
 
-    <!-- Radial inventory wheel (play mode) -->
-    <div id="radial-wheel" class="radial-wheel hidden">
-        <div id="radial-wheel-items" class="radial-wheel-items"></div>
-    </div>
-
     <!-- Puzzle overlay (play mode) -->
     <div id="puzzle-overlay" class="puzzle-overlay hidden">
         <div class="puzzle-overlay-backdrop"></div>
@@ -126,6 +113,7 @@
         </div>
     </div>
 
+    <script src="js/radial-wheel.js"></script>
     <script src="js/game-state.js"></script>
     <script src="js/blueprint-editor.js"></script>
     <script src="js/scene-manager.js"></script>
@@ -144,10 +132,10 @@
     <script src="js/puzzle-hotspot-editor.js"></script>
     <script src="js/play-mode.js"></script>
     <script src="js/image-editor.js"></script>
+    <script src="js/puzzle-asset-library.js"></script>
     <script src="js/ideogram-editor.js"></script>
     <script src="js/ruinscope-editor.js"></script>
-    <script src="js/prismatic-editor.js"></script>
-    <script src="js/clockwork-editor.js"></script>
+    <script src="js/lemmings-editor.js"></script>
     <script src="js/toolbar.js"></script>
     <script src="data/project-data.js"></script>
     <script src="js/preloader.js"></script>

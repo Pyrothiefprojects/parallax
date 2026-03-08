@@ -758,7 +758,7 @@ window.PARALLAX_PROJECT ={
       "name": "Isopress",
       "states": [
         {
-          "backgroundImage": "assets/puzzles/Isopress.png",
+          "backgroundImage": "assets/puzzles/IsoPress.png",
           "assets": [],
           "assetGroups": [],
           "hotspots": [
@@ -1424,8 +1424,8 @@ window.PARALLAX_PROJECT ={
       {
         "id": "bp_element_1771930025081_fahu",
         "type": "item",
-        "x": 760,
-        "y": 960,
+        "x": 880,
+        "y": 800,
         "width": 40,
         "height": 40,
         "label": "ruinMark - navigation",
@@ -1482,7 +1482,7 @@ window.PARALLAX_PROJECT ={
     },
     "metadata": {
       "created": 1771308000000,
-      "modified": 1771930485993
+      "modified": 1772771728728
     }
   },
   "ideogramData": {
@@ -1666,7 +1666,7 @@ window.PARALLAX_PROJECT ={
         },
         "metadata": {
           "created": 1771503169529,
-          "modified": 1771930485994
+          "modified": 1772771728728
         },
         "thumbnail": "assets/puzzles/pieces/Ideogram codex.png",
         "isopresses": [
@@ -1992,5 +1992,99 @@ window.PARALLAX_PROJECT ={
   },
   "ruinscopeData": {
     "ruinscopes": []
-  }
+  },
+  "lemmingsData": {
+    "lemmings": [
+      {
+        "id": "lemmings_1772763313653_iga1",
+        "name": "Untitled",
+        "sources": [
+          {
+            "id": "src_1772763326985_ct",
+            "x": 408,
+            "y": 295,
+            "angle": 0.06254056610812131,
+            "image": "assets/puzzles/pieces/Iso_plate.png",
+            "imageSize": 44
+          }
+        ],
+        "mirrors": [
+          {
+            "id": "mir_1772763433380_qs",
+            "x": 1032,
+            "y": 250,
+            "angle": 197.0181818182155,
+            "length": 142,
+            "locked": false,
+            "color": null,
+            "image": "assets/puzzles/pieces/blank_Mark.png",
+            "linkedPegId": "peg_1772769877210_fj"
+          }
+        ],
+        "targets": [],
+        "walls": [],
+        "filters": [],
+        "splitters": [
+          {
+            "id": "spl_1772764011906_fi",
+            "x": 787,
+            "y": 641,
+            "splits": 8,
+            "angle": 0,
+            "linkedPegId": "peg_1772769877210_fj"
+          }
+        ],
+        "pegs": [
+          {
+            "id": "peg_1772769875394_ls",
+            "x": 592,
+            "y": 639,
+            "role": "driver",
+            "hasGear": true,
+            "gearRadius": 30,
+            "gearLocked": false
+          },
+          {
+            "id": "peg_1772769876343_hb",
+            "x": 655,
+            "y": 639,
+            "role": "normal",
+            "hasGear": true,
+            "gearRadius": 30,
+            "gearLocked": false
+          },
+          {
+            "id": "peg_1772769877210_fj",
+            "x": 718,
+            "y": 639,
+            "role": "output",
+            "hasGear": true,
+            "gearRadius": 33,
+            "gearLocked": false,
+            "linkedElementId": "mir_1772763433380_qs",
+            "linkedElementType": "mirror",
+            "image": "assets/puzzles/pieces/gear.png",
+            "imageSize": 74
+          }
+        ]
+      }
+    ]
+  },
+  "puzzleAssets": [
+    {
+      "id": "pa_1772763309877_de52",
+      "name": "Iso_plate",
+      "image": "assets/puzzles/pieces/Iso_plate.png"
+    },
+    {
+      "id": "pa_1772763443367_ycb0",
+      "name": "blank_Mark",
+      "image": "assets/puzzles/pieces/blank_Mark.png"
+    },
+    {
+      "id": "pa_1772771572920_9und",
+      "name": "gear",
+      "image": "assets/puzzles/pieces/gear.png"
+    }
+  ]
 };
